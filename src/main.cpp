@@ -1,3 +1,7 @@
+const char wifissid[] = "UPC0444679";
+const char wifipassword[] = "x58nzmvfTzrf";
+
+
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -6,11 +10,20 @@
 
 #include "config.h"
 
+#define TINY_GSM_MODEM_SIM800
+
+#define GSM_RESET_PIN 15
+#define GSM_TX_PIN 4
+#define GSM_RX_PIN 5
+
+#include <SoftwareSerial.h>
+SoftwareSerial SerialAT(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
+#define SerialMon Serial
+#define TINY_GSM_DEBUG SerialMon
+#include <TinyGsmClient.h>
+
 const uint8_t PIN_LED = 2;
 const uint8_t PIN2_LED = 16;
-
-const char wifissid[] = "UPC0444679";
-const char wifipassword[] = "x58nzmvfTzrf";
 
 /*
  * Info odnośnie encType
@@ -19,7 +32,7 @@ const char wifipassword[] = "x58nzmvfTzrf";
  * CCMP (WPA) = 4
  * NONE = 7
  * AUTO = 8
- * UPC Wi-Free 255 z jakiegoś powodu (Nowy standard UPC!)
+ * UPC Wi-Free 255 z jakiegoś powodu (Nowy standard UPC!, pewnie -1)
 */
 
 /* 
@@ -73,11 +86,38 @@ void networkToJSONObject(int id, char *string)
   snprintf(string, 72, "{\"SSID\":\"%s\",\"dBm\":\"%d\",\"encType\":\"%d\"}", WiFi.SSID(id).c_str(), WiFi.RSSI(id), WiFi.encryptionType(id));
 }
 
+uint32_t rate = 0;
+
 void setup()
 {
+  pinMode(GSM_RESET_PIN, OUTPUT);
+  digitalWrite(GSM_RESET_PIN, 1);
   LittleFS.begin();
   Serial.begin(SERIAL_BAUD);
   Serial.setDebugOutput(true);
+
+  if (!rate) {
+    rate = TinyGsmAutoBaud(SerialAT);
+  }
+
+  if (!rate) {
+    SerialMon.println(F("***********************************************************"));
+    SerialMon.println(F(" Module does not respond!"));
+    SerialMon.println(F("   Check your Serial wiring"));
+    SerialMon.println(F("   Check the module is correctly powered and turned on"));
+    SerialMon.println(F("***********************************************************"));
+    delay(30000L);
+    return;
+  }
+
+  SerialAT.begin(rate);
+
+  // Access AT commands from Serial Monitor
+  SerialMon.println(F("***********************************************************"));
+  SerialMon.println(F(" You can now send AT commands"));
+  SerialMon.println(F(" Enter \"AT\" (without quotes), and you should see \"OK\""));
+  SerialMon.println(F(" If it doesn't work, select \"Both NL & CR\" in Serial Monitor"));
+  SerialMon.println(F("***********************************************************"));
 
   pinMode(AC_PIN, INPUT_PULLUP);
   bool acConnected = digitalRead(AC_PIN);
@@ -299,4 +339,12 @@ void setup()
 
 void loop()
 {
+  if (SerialAT.available()) {
+    SerialMon.write(SerialAT.read());
+  }
+  
+  if (SerialMon.available()) {
+    SerialAT.write(SerialMon.read());
+  }
+
 }
