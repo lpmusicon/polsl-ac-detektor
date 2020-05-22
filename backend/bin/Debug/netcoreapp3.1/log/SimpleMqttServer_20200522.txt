@@ -1,0 +1,14 @@
+2020-05-22 15:52:43.235 +02:00 [INF] New subscription: ClientId = mosq-RGppdM6eGizJYRU7pz, TopicFilter = TopicFilter: [Topic=house/ac] [QualityOfServiceLevel=AtMostOnce] [NoLocal=] [RetainAsPublished=] [RetainHandling=]
+2020-05-22 15:52:47.060 +02:00 [INF] New subscription: ClientId = mosq-kIdn3YeT3oJ0YpEgrz, TopicFilter = TopicFilter: [Topic=house/ac] [QualityOfServiceLevel=AtMostOnce] [NoLocal=] [RetainAsPublished=] [RetainHandling=]
+2020-05-22 15:52:52.184 +02:00 [INF] Message: ClientId = mosq-ChCdb0Efbpn0h6STpf, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:52.929 +02:00 [INF] Message: ClientId = mosq-ysDZ2KTQre5SBzJHah, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:53.211 +02:00 [INF] Message: ClientId = mosq-fKmkAzg6AMM8dTEdQZ, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:53.439 +02:00 [INF] Message: ClientId = mosq-hRGVa7AWIJZFSdyaJJ, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:53.638 +02:00 [INF] Message: ClientId = mosq-nppYGTbLmwDGEvRuZJ, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:54.428 +02:00 [INF] Message: ClientId = mosq-994IvByG8XTOdfeOnj, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:54.613 +02:00 [INF] Message: ClientId = mosq-rImuEW3BLGDgtmTscU, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:54.812 +02:00 [INF] Message: ClientId = mosq-OVifTUP4TVPO38FWcd, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:55.032 +02:00 [INF] Message: ClientId = mosq-YrRseUlyhkCOLbMjmh, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:55.253 +02:00 [INF] Message: ClientId = mosq-kPkrY4Z5QastbCVqYb, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:55.549 +02:00 [INF] Message: ClientId = mosq-ujc8AmvLqpMsaBoiWs, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
+2020-05-22 15:52:55.854 +02:00 [INF] Message: ClientId = mosq-VFgR4W1uegh8RoI734, Topic = house/ac, Payload = Siemanko, QoS = AtMostOnce, Retain-Flag = False
