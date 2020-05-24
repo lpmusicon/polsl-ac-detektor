@@ -1,0 +1,77 @@
+$accent-color: #44d194;
+$background-color: #0f181c;
+$light-color: #becbd8;
+
+.topbar-default {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: normal;
+  color: $light-color;
+  text-align: center;
+  margin: 16px 0;
+}
+
+h2 {
+  color: $light-color;
+  font-size: 24px;
+  font-weight: normal;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+p {
+  color: $light-color;
+  margin: 0 16px 16px;
+  line-height: 150%;
+
+  &.accent {
+    color: $accent-color;
+  }
+}
+
+form {
+    margin: 16px;
+    display: flex;
+    flex-direction: column;
+
+    button.button-element {
+        margin: 8px 0;
+        padding: 8px 0;
+        box-sizing: border-box;
+    
+        background: none;
+        border: none;
+        outline: none;
+    
+        color: $light-color;
+        font-size: 16px;
+        text-align: center;
+    
+        -webkit-font-smoothing: inherit;
+        
+        cursor: pointer;
+    
+        &::-moz-focus-inner {
+          border: 0;
+        }
+    
+        &:hover {
+            color: $accent-color;
+        }
+      }
+}

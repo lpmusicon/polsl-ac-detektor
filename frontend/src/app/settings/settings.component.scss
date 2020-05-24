@@ -1,0 +1,30 @@
+@import "./../shared.scss";
+
+div.topbar {
+  @extend .topbar-default;
+
+  app-signal-status {
+      flex: 1;
+  }
+
+  h2 {
+      @extend h2;
+      flex: 3;
+  }
+
+  a.settings {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    cursor: pointer;
+
+    img {
+      @extend .icon;
+    }
+  }
+}
+
+p.slim {
+    @extend p;
+    margin: 0 16px 2px;
+}

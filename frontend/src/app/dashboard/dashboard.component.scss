@@ -1,0 +1,69 @@
+@import "./../shared.scss";
+
+$border-item: 1px solid $light-color;
+
+div.topbar {
+  @extend .topbar-default;
+
+  app-signal-status {
+    flex: 1;
+  }
+
+  h2 {
+    @extend h2;
+    flex: 3;
+  }
+
+  a.settings {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    cursor: pointer;
+
+    img {
+      @extend .icon;
+    }
+  }
+}
+
+div.notifications {
+  margin: 0 16px 16px;
+
+  div.item {
+    display: flex;
+    border-top: $border-item;
+    border-right: $border-item;
+    border-left: $border-item;
+    padding: 12px 12px;
+    box-sizing: border-box;
+    align-items: center;
+
+    img.icon {
+      margin-right: 10px;
+      @extend .icon;
+    }
+
+    P {
+      margin: 0;
+      padding: 0;
+      color: $light-color;
+
+      &.date {
+        color: $accent-color;
+      }
+    }
+
+    span {
+      flex: 1;
+    }
+
+    &:first-child {
+      border-radius: 6px 6px 0 0;
+    }
+
+    &:last-child {
+      border-radius: 0 0 6px 6px;
+      border-bottom: $border-item;
+    }
+  }
+}

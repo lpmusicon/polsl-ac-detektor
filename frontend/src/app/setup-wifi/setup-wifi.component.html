@@ -1,1 +1,22 @@
-<p>setup-wifi works!</p>
+<div class="topbar">
+    <app-signal-status></app-signal-status>
+</div>
+<h1>Witaj</h1>
+<p>Pora skonfigurować twoje urządzenie</p>
+<p>Zacznijmy od podłączenia do sieci WiFi</p>
+<form [formGroup]="setup" (submit)="onSubmit()">
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/cloud.svg">
+        <label>SSID</label>
+        <input appInputStyler formControlName="ssid" placeholder="Nazwa sieci">
+    </app-input-wrapper>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/password.svg">
+        <label>Hasło</label>
+        <input type="password" formControlName="password" appInputStyler placeholder="*******">
+    </app-input-wrapper>
+    <button appButtonStyler type="submit">Zapisz</button>
+</form>
+<!-- <p>Niepoprawne dane SSID/Hasło</p> -->
+<p>Urządzenie sprawdzi podane SSID i hasło</p>
+<p class="accent">Strona odświeży się automatycznie</p>

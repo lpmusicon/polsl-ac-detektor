@@ -3,11 +3,11 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
 @Component({
-  selector: 'app-setup-wifi',
-  templateUrl: './setup-wifi.component.html',
-  styleUrls: ['./setup-wifi.component.scss']
+  selector: 'app-setup-gsm',
+  templateUrl: './setup-gsm.component.html',
+  styleUrls: ['./setup-gsm.component.scss']
 })
-export class SetupWifiComponent implements OnInit {
+export class SetupGsmComponent implements OnInit {
 
   public setup: FormGroup;
 
@@ -15,8 +15,8 @@ export class SetupWifiComponent implements OnInit {
 
   public ngOnInit(): void {
     this.setup = this.fb.group({
-      ssid: ["", Validators.compose([Validators.required, Validators.minLength(1), Validators.maxLength(31)])],
-      password: ["", Validators.compose([Validators.required, Validators.minLength(8), Validators.maxLength(63)])]
+      name: ["", Validators.compose([Validators.required, Validators.minLength(3), Validators.maxLength(15)])],
+      phone: ["", Validators.compose([Validators.required, Validators.minLength(8), Validators.maxLength(15)])]
     });
   }
 
@@ -27,7 +27,7 @@ export class SetupWifiComponent implements OnInit {
     }
 
     console.log(this.setup);
-    this.router.navigate(["/setup-gsm"]);
+    this.router.navigate(["/setup-finished"]);
   }
 
 }

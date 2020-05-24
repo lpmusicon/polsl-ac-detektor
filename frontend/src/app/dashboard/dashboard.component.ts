@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -7,9 +8,16 @@ import { Component, OnInit } from '@angular/core';
 })
 export class DashboardComponent implements OnInit {
 
-  constructor() { }
+  public entries = [];  
+
+  constructor(private api: ApiService) { }
 
   ngOnInit(): void {
+    this.api.notification().subscribe({
+      next: (data) => {
+       this.entries = data.entries;
+      }
+    })
   }
 
 }

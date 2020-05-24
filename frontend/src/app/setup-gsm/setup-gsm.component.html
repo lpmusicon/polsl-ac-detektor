@@ -1,0 +1,19 @@
+<div class="topbar">
+    <app-signal-status></app-signal-status>
+</div>
+<h1>Witaj</h1>
+<p>Prawie gotowe</p>
+<p>Podaj nr telefonu do komunikacji</p>
+<form [formGroup]="setup" (submit)="onSubmit()">
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/cloud.svg">
+        <label>Nazwa</label>
+        <input appInputStyler formControlName="name" placeholder="Nazwa kontaktu">
+    </app-input-wrapper>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/password.svg">
+        <label>Tel</label>
+        <input type="tel" appInputStyler formControlName="phone" placeholder="603 422 234">
+    </app-input-wrapper>
+    <button appButtonStyler type="submit">Zapisz</button>
+</form>

@@ -1,1 +1,43 @@
-<p>settings works!</p>
+<div class="topbar">
+    <app-signal-status></app-signal-status>
+    <h2>Ustawienia</h2>
+    <a class="settings" routerLink="/dashboard">
+        <img src="assets/icons/close.svg" alt="zamknij" />
+    </a>
+</div>
+<h1>WiFi</h1>
+<form>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/cloud.svg">
+        <label>SSID</label>
+        <input appInputStyler [placeholder]="wifi.ssid">
+    </app-input-wrapper>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/password.svg">
+        <label>Hasło</label>
+        <input type="password" appInputStyler placeholder="*******">
+    </app-input-wrapper>
+    <button appButtonStyler type="button">Nadpisz ustawienia WiFi</button>
+</form>
+<h1>GSM</h1>
+<form>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/user.svg">
+        <label>Nazwa</label>
+        <input appInputStyler [placeholder]="gsm.name">
+    </app-input-wrapper>
+    <app-input-wrapper>
+        <img class="icon" src="assets/icons/phone.svg">
+        <label>Tel</label>
+        <input type="tel" appInputStyler [placeholder]="gsm.phone">
+    </app-input-wrapper>
+    <button appButtonStyler type="button">Zapisz</button>
+</form>
+<p class="slim">MAC karty WiFi</p>
+<p class="accent">{{ wifi.mac }}</p>
+<p class="slim">Stan baterii</p>
+<p class="accent">{{ battery.voltage }} - {{ battery.charging == 1 ? "Ładowanie" : "Rozładowywanie" }}</p>
+<p class="slim">Numer karty SIM</p>
+<p class="accent">{{ gsm.cardNumber }}</p>
+<p class="slim">Moc sygnału</p>
+<p class="accent">{{ this.gsm.rssi }}</p>
