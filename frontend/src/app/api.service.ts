@@ -37,8 +37,8 @@ export class ApiService {
     return this.http.get("/api/wifi-mac");
   }
 
-  public wifiConnect(ssid, password): Observable<any> {
-    return this.http.post("/api/wifi-connect", { ssid: ssid, password: password });
+  public wifiConnect(setup): Observable<any> {
+    return this.http.post("/api/wifi-connect", setup);
   }
 
   public wifiCurrent(): Observable<any> {

@@ -44,10 +44,26 @@ export class FakeBackendInterceptor implements HttpInterceptor {
                     return wifiMac();
                 case url.endsWith('/api/notification') && method === 'GET':
                     return notification();
+                case url.endsWith('/api/wifi-connect') && method === 'POST':
+                    return wifiConnect();
+                case url.endsWith('/api/wifi-status') && method === 'GET':
+                    return wifiStatus();
                 default:
                     // pass through any requests not handled above
                     return next.handle(request);
             }
+        }
+
+        function wifiStatus() {
+            return ok({
+                "status": 3
+            });
+        }
+
+        function wifiConnect() {
+            return ok({
+                "status": "ok"
+            });
         }
 
         function notification() {

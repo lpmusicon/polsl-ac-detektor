@@ -16,7 +16,7 @@ export class SetupGsmComponent implements OnInit {
   public ngOnInit(): void {
     this.setup = this.fb.group({
       name: ["", Validators.compose([Validators.required, Validators.minLength(3), Validators.maxLength(15)])],
-      phone: ["", Validators.compose([Validators.required, Validators.minLength(8), Validators.maxLength(15)])]
+      phone: ["", Validators.compose([Validators.required, Validators.minLength(8), Validators.maxLength(15), Validators.pattern('^[0-9]*$')])]
     });
   }
 
