@@ -2,36 +2,36 @@
     <app-signal-status></app-signal-status>
     <h2>Ustawienia</h2>
     <a class="settings" routerLink="/dashboard">
-        <img src="assets/icons/close.svg" alt="zamknij" />
+        <img src="assets/close.svg" alt="zamknij" />
     </a>
 </div>
 <h1>WiFi</h1>
-<form>
+<form [formGroup]="formWifi">
     <app-input-wrapper>
-        <img class="icon" src="assets/icons/cloud.svg">
+        <img class="icon" src="assets/cloud.svg">
         <label>SSID</label>
-        <input appInputStyler [placeholder]="wifi.ssid">
+        <input appInputStyler formControlName="ssid" [placeholder]="wifi.ssid">
     </app-input-wrapper>
-    <app-input-wrapper>
-        <img class="icon" src="assets/icons/password.svg">
+    <!-- <app-input-wrapper>
+        <img class="icon" src="password.svg">
         <label>Hasło</label>
-        <input type="password" appInputStyler placeholder="*******">
-    </app-input-wrapper>
-    <button appButtonStyler type="button">Nadpisz ustawienia WiFi</button>
+        <input type="password" formControlName="password" appInputStyler placeholder="*******">
+    </app-input-wrapper> -->
+    <!-- <button appButtonStyler type="button">Nadpisz ustawienia WiFi</button> -->
 </form>
 <h1>GSM</h1>
-<form>
+<form [formGroup]="formGsm">
     <app-input-wrapper>
-        <img class="icon" src="assets/icons/user.svg">
+        <img class="icon" src="assets/user.svg">
         <label>Nazwa</label>
-        <input appInputStyler [placeholder]="gsm.name">
+        <input appInputStyler formControlName="name" [placeholder]="gsm.name">
     </app-input-wrapper>
     <app-input-wrapper>
-        <img class="icon" src="assets/icons/phone.svg">
+        <img class="icon" src="assets/phone.svg">
         <label>Tel</label>
-        <input type="tel" appInputStyler [placeholder]="gsm.phone">
+        <input type="tel" formControlName="phone" appInputStyler [placeholder]="gsm.phone">
     </app-input-wrapper>
-    <button appButtonStyler type="button">Zapisz</button>
+    <!-- <button appButtonStyler type="button">Zapisz</button> -->
 </form>
 <p class="slim">MAC karty WiFi</p>
 <p class="accent">{{ wifi.mac }}</p>

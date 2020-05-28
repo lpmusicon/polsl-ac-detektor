@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-setup-gsm',
@@ -11,7 +12,7 @@ export class SetupGsmComponent implements OnInit {
 
   public setup: FormGroup;
 
-  constructor(private fb: FormBuilder, private router: Router) { }
+  constructor(private fb: FormBuilder, private router: Router, private api: ApiService) { }
 
   public ngOnInit(): void {
     this.setup = this.fb.group({
@@ -26,8 +27,14 @@ export class SetupGsmComponent implements OnInit {
       return;
     }
 
-    console.log(this.setup);
-    this.router.navigate(["/setup-finished"]);
+    this.setup.disable();
+
+    this.api.gsmContactSave(this.setup.value).subscribe({
+      next: (status) => {
+        console.log("Save GSM status: ", status);
+        this.router.navigate(["/setup-finished"]);
+      }
+    });
   }
 
 }

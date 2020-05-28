@@ -19,12 +19,10 @@ export class SignalStatusComponent implements OnInit, OnDestroy {
   constructor(private api: ApiService) { }
 
   ngOnInit(): void {
-    this.statusIcon = "assets/icons/battery-charging.svg";
+    this.statusIcon = "assets/battery-charging.svg";
     this.batteryPercentage = 50;
 
-    this.sub = timer(0, 1000).pipe(
-      switchMap(() => this.api.batteryStatus())
-    ).subscribe({next: this.transformStatus.bind(this)});
+    this.sub = timer(0, 10000).pipe(switchMap(() => this.api.batteryStatus())).subscribe({next: this.transformStatus.bind(this)});
   }
 
   private transformStatus(data) {
@@ -34,11 +32,11 @@ export class SignalStatusComponent implements OnInit, OnDestroy {
     this.batteryPercentage = Math.ceil(((data.status - minV) / (maxV - minV)) * 100);
 
     if(this.batteryPercentage > 75) {
-      this.statusIcon = "assets/icons/battery-full.svg";
+      this.statusIcon = "assets/battery-full.svg";
     } else if(this.batteryPercentage > 40) {
-      this.statusIcon = "assets/icons/battery.svg";
+      this.statusIcon = "assets/battery.svg";
     } else {
-      this.statusIcon = "assets/icons/battery-low.svg";
+      this.statusIcon = "assets/battery-low.svg";
     }
   }
 

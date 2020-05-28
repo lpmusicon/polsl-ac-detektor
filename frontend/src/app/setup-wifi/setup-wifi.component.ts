@@ -31,19 +31,21 @@ export class SetupWifiComponent implements OnInit, OnDestroy {
   }
 
   public onSubmit() {
-    if(!this.setup.valid) {
+    this.wifi = -1;
+
+    if (!this.setup.valid) {
       console.warn("Invalid form", this.setup);
       return;
     }
 
-    console.log(this.setup.value);
+    this.setup.disable();
+
     this.api.wifiConnect(this.setup.value).subscribe({
       next: (response) => {
-        console.log('ask for status');
-        this.wifiStatus = timer(0, 1000).pipe(switchMap(() => this.api.wifiStatus())
-        ).subscribe({next: this.transformStatus.bind(this)});
+        console.log('ask for status', response);
+        this.wifiStatus = timer(1000, 2000).pipe(switchMap(() => this.api.wifiStatus())).subscribe({ next: this.transformStatus.bind(this) });
       }
-    })
+    });
 
     console.log(this.setup);
   }
@@ -51,9 +53,20 @@ export class SetupWifiComponent implements OnInit, OnDestroy {
   private transformStatus(data) {
     console.log(data);
     this.wifi = data.status;
-    if(data.status == 3) {
-      this.router.navigate(["/setup-gsm"]);
+    if (this.wifi == 3) {
+      this.api.wifiSave(this.setup.value).subscribe({
+        next: (status) => this.router.navigate(["/setup-gsm"])
+      });
+    } else if (this.wifi == 1 || this.wifi == 4) {
+      this.api.wifiDisconnect().subscribe({
+        next: (data) => {
+          console.log(data);
+          this.wifiStatus.unsubscribe();
+        }
+      });
     }
+
+    this.setup.enable();
   }
 
 }

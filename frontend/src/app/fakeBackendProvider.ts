@@ -6,6 +6,9 @@ import { delay, mergeMap, materialize, dematerialize } from 'rxjs/operators';
 // array in local storage for registered users
 let users = JSON.parse(localStorage.getItem('users')) || [];
 
+let currentWifi;
+let knownWifi = [{ ssid: 'test', password: 'testtest' }];
+
 @Injectable()
 export class FakeBackendInterceptor implements HttpInterceptor {
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -15,19 +18,10 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         return of(null)
             .pipe(mergeMap(handleRoute))
             .pipe(materialize()) // call materialize and dematerialize to ensure delay even if an error is thrown (https://github.com/Reactive-Extensions/RxJS/issues/648)
-            .pipe(delay(200))
             .pipe(dematerialize());
 
         function handleRoute() {
             switch (true) {
-                case url.endsWith('/users/authenticate') && method === 'POST':
-                    return authenticate();
-                case url.endsWith('/users/register') && method === 'POST':
-                    return register();
-                case url.endsWith('/users') && method === 'GET':
-                    return getUsers();
-                case url.match(/\/users\/\d+$/) && method === 'DELETE':
-                    return deleteUser();
                 case url.endsWith('/api/battery-status') && method === 'GET':
                     return batteryStatus();
                 case url.endsWith('/api/ac-status') && method === 'GET':
@@ -36,6 +30,8 @@ export class FakeBackendInterceptor implements HttpInterceptor {
                     return gsmNumber();
                 case url.endsWith('/api/gsm-contact') && method === 'GET':
                     return gsmContact();
+                case url.endsWith('/api/gsm-contact') && method === 'POST':
+                    return gsmContactSave();
                 case url.endsWith('/api/wifi-current') && method === 'GET':
                     return wifiCurrent();
                 case url.endsWith('/api/gsm-signal') && method === 'GET':
@@ -46,21 +42,54 @@ export class FakeBackendInterceptor implements HttpInterceptor {
                     return notification();
                 case url.endsWith('/api/wifi-connect') && method === 'POST':
                     return wifiConnect();
+                case url.endsWith('/api/wifi-save') && method === 'POST':
+                    return wifiConnect();
+                case url.endsWith('/api/wifi-disconnect') && method === 'DELETE':
+                    return wifiDisconnect();
                 case url.endsWith('/api/wifi-status') && method === 'GET':
                     return wifiStatus();
+                case url.endsWith('/api/setup-completed') && method === 'GET':
+                    return setupCompleted();
                 default:
                     // pass through any requests not handled above
                     return next.handle(request);
             }
         }
 
-        function wifiStatus() {
+        function setupCompleted() {
             return ok({
-                "status": 3
+                "status": 1
+            });
+        }
+
+        function wifiDisconnect() {
+            currentWifi = {};
+
+            return ok({
+                "status": "ok"
+            });
+        }
+
+        function wifiStatus() {
+            let isConnected = knownWifi.filter((el) => {
+                return el.ssid == currentWifi.ssid && el.password == currentWifi.password
+            });
+
+            if (isConnected.length > 0) {
+                return ok({
+                    "status": 3
+                });
+            }
+
+            return ok({
+                "status": Math.round(Math.random()) ? 1 : 4
             });
         }
 
         function wifiConnect() {
+            currentWifi = body;
+            console.log(currentWifi);
+
             return ok({
                 "status": "ok"
             });
@@ -112,6 +141,12 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             return ok({
                 name: "Tomek",
                 number: "0048233433232"
+            });
+        }
+
+        function gsmContactSave() {
+            return ok({
+                status: "ok"
             });
         }
 

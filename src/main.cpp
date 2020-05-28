@@ -1,26 +1,26 @@
 const char wifissid[] = "UPC0444679";
 const char wifipassword[] = "x58nzmvfTzrf";
 
-
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <LittleFS.h>
+#include <FS.h>
+#include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
+#include <WiFi.h>
 
 #include "config.h"
+#include "notification.h"
 
-#define TINY_GSM_MODEM_SIM800
+// #define TINY_GSM_MODEM_SIM800
 
 #define GSM_RESET_PIN 15
 #define GSM_TX_PIN 4
 #define GSM_RX_PIN 5
 
-#include <SoftwareSerial.h>
-SoftwareSerial SerialAT(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
-#define SerialMon Serial
-#define TINY_GSM_DEBUG SerialMon
-#include <TinyGsmClient.h>
+// #include <SoftwareSerial.h>
+// SoftwareSerial SerialAT(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
+// #define SerialMon Serial
+// #define TINY_GSM_DEBUG SerialMon
+// #include <TinyGsmClient.h>
 
 const uint8_t PIN_LED = 2;
 const uint8_t PIN2_LED = 16;
@@ -51,33 +51,12 @@ const uint8_t PIN2_LED = 16;
 #define AC_PIN 5       // PIN D1
 #define BATTERY_PIN A0 // PIN ADC0
 
-#define SERIAL_BAUD 74880
+#define SERIAL_BAUD 115200
 
 char SSID[33];
 char PASSWORD[64];
 
 #define HTTP_SERVER_PORT 80
-
-const int RSSI_MAX = -50;  // define maximum strength of signal in dBm
-const int RSSI_MIN = -100; // define minimum strength of signal in dBm
-int dBmtoPercentage(int dBm)
-{
-  int quality;
-  if (dBm <= RSSI_MIN)
-  {
-    quality = 0;
-  }
-  else if (dBm >= RSSI_MAX)
-  {
-    quality = 100;
-  }
-  else
-  {
-    quality = 2 * (dBm + 100);
-  }
-
-  return quality;
-}
 
 AsyncWebServer server(HTTP_SERVER_PORT);
 
@@ -88,49 +67,26 @@ void networkToJSONObject(int id, char *string)
 
 uint32_t rate = 0;
 
+int8_t networks = 0;
+
 void setup()
 {
+  WiFi.softAPdisconnect();
+
   pinMode(GSM_RESET_PIN, OUTPUT);
   digitalWrite(GSM_RESET_PIN, 1);
-  LittleFS.begin();
+  SPIFFS.begin();
   Serial.begin(SERIAL_BAUD);
   Serial.setDebugOutput(true);
-
-  if (!rate) {
-    rate = TinyGsmAutoBaud(SerialAT);
-  }
-
-  if (!rate) {
-    SerialMon.println(F("***********************************************************"));
-    SerialMon.println(F(" Module does not respond!"));
-    SerialMon.println(F("   Check your Serial wiring"));
-    SerialMon.println(F("   Check the module is correctly powered and turned on"));
-    SerialMon.println(F("***********************************************************"));
-    delay(30000L);
-    return;
-  }
-
-  SerialAT.begin(rate);
-
-  // Access AT commands from Serial Monitor
-  SerialMon.println(F("***********************************************************"));
-  SerialMon.println(F(" You can now send AT commands"));
-  SerialMon.println(F(" Enter \"AT\" (without quotes), and you should see \"OK\""));
-  SerialMon.println(F(" If it doesn't work, select \"Both NL & CR\" in Serial Monitor"));
-  SerialMon.println(F("***********************************************************"));
 
   pinMode(AC_PIN, INPUT_PULLUP);
   bool acConnected = digitalRead(AC_PIN);
   int battV = analogRead(BATTERY_PIN);
 
-  if (isConfigured())
-  {
-    loadWiFiconfig(SSID, PASSWORD);
-  }
-  else
-  {
-    loadDefaultWiFiconfig(SSID, PASSWORD);
-  }
+  Serial.println(acConnected);
+  Serial.println(battV);
+
+  loadDefaultWiFiconfig(SSID, PASSWORD);
 
   Serial.print("ssid: ");
   Serial.println(SSID);
@@ -139,8 +95,8 @@ void setup()
 
   WiFi.persistent(false);
 
-  // Create network and connect
   WiFi.mode(WIFI_AP_STA);
+  WiFi.setAutoReconnect(false);
 
   WiFi.printDiag(Serial);
 
@@ -148,7 +104,7 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("Connecting");
-    delay(500);
+    delay(1000);
   }
 
   Serial.print("Connected WiFi IP:");
@@ -156,34 +112,27 @@ void setup()
 
   WiFi.softAP(SSID, PASSWORD);
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, String(), "Hello World");
-  });
-
 #define SCAN_NOT_TRIGGERED -2
 #define SCAN_NOT_FINISHED -1
+
+  server.on("/api/setup-completed", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // GOT HELP ME REFACTOR THIS
+    // STRING BAD
+    // CHAR* GOOD
+
+    String response = "{ \"status\": \"";
+    response += isConfigured();
+    response += "\" }";
+
+    request->send(200, "application/json", response);
+  });
 
   server.on("/api/wifi-scan", HTTP_GET, [](AsyncWebServerRequest *request) {
     int scanResult = WiFi.scanComplete();
     if (scanResult == SCAN_NOT_TRIGGERED)
     {
       WiFi.scanDelete();
-      WiFi.scanNetworksAsync([](int onComplete) {
-        Serial.print("Networks: ");
-        Serial.println(onComplete);
-
-        for (int i = 0; i < onComplete; i++)
-        {
-          Serial.print("WiFi SSID: ");
-          Serial.print(WiFi.SSID(i));
-          Serial.print(" dBm ");
-          Serial.print(WiFi.RSSI(i));
-          Serial.print(" signal ");
-          Serial.print(dBmtoPercentage(WiFi.RSSI(i)));
-          Serial.print(" encType ");
-          Serial.println(WiFi.encryptionType(i));
-        }
-      });
+      networks = WiFi.scanNetworks(true, false);
 
       request->send(200, "application/json", "{ \"status\": \"OK\" }");
     }
@@ -253,76 +202,166 @@ void setup()
     delete[] response;
   });
 
-  server.on("/api/wifi-connect", HTTP_POST, [](AsyncWebServerRequest *request) {
-    bool isConnected = WiFi.isConnected();
-    Serial.print("isConnected: ");
-    Serial.println(isConnected ? "true" : "false");
+  server.on("/api/wifi-current", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String response = "{\"ssid\":\"";
+    response += WiFi.SSID();
+    response += "\"}";
+    request->send(200, "application/json", response);
+  });
 
-    if (isConnected)
+  server.on("/api/notification", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Notification one(0, "13:30 13/03/2020");
+    Notification two(1, "12:30 13/03/2020");
+    Notification three(2, "11:30 13/03/2020");
+    Notification four(0, "10:50 13/03/2020");
+
+    String response = "{\"entries\":[";
+    response += one.toJSON() + ",";
+    response += two.toJSON() + ",";
+    response += three.toJSON() + ",";
+    response += four.toJSON();
+    response += "]}";
+    request->send(200, "application/json", response);
+  });
+
+  server.on("/api/wifi-connect", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (WiFi.isConnected())
       WiFi.disconnect();
 
-    
     String ssid;
     String password;
 
-    if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
-      AsyncWebParameter * pssid = request->getParam("ssid", true);
-      AsyncWebParameter * ppassword = request->getParam("password", true);
+    if (request->hasParam("ssid", true) && request->hasParam("password", true))
+    {
+      AsyncWebParameter *pssid = request->getParam("ssid", true);
+      AsyncWebParameter *ppassword = request->getParam("password", true);
+
       ssid = pssid->value();
       password = ppassword->value();
 
+      Serial.print(__FILE__);
+      Serial.print(":");
+      Serial.print(__LINE__);
+      Serial.print("param ssid: ");
       Serial.println(ssid);
+      Serial.print("password: ");
       Serial.println(password);
 
-      WiFi.begin(ssid, password);
+      WiFi.persistent(false);
+      WiFi.begin(ssid.c_str(), password.c_str());
+    }
+    else
+    {
+      Serial.println("Mamma mia, it's me disconectario");
     }
 
     uint8_t wifiStatus = WiFi.status();
     char *response = new char[18];
     sprintf(response, "{\"status\":%d}", wifiStatus);
     request->send(200, "application/json", response);
-    
   });
 
-  server.on("/api/wifi-disconnect", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/api/wifi-disconnect", HTTP_DELETE, [](AsyncWebServerRequest *request) {
     WiFi.disconnect();
 
-    request->send(200, "application/json", "{ \"status\": \"OK\" }");
+    request->send(200, "application/json", "{ \"status\": \"ok\" }");
+  });
+
+  server.on("/api/wifi-mac", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String response = "{ \"mac\": \"";
+    response += WiFi.macAddress();
+    response += "\" }";
+
+    request->send(200, "application/json", response);
   });
 
   server.on("/api/battery-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    //TODO
-    request->send(200, "application/json", "{ \"status\": \"3.8V\" }");
+    // TODO
+    request->send(200, "application/json", "{ \"status\": \"3800\" }");
   });
 
   server.on("/api/ac-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    //TODO
+    // TODO
     request->send(200, "application/json", "{ \"status\": \"ON\" }");
   });
 
-  server.on("/api/wifi-network", HTTP_POST, [](AsyncWebServerRequest *request) {
-    // TODO
-    // SAVE FROM FORM TO MEMORKI
+  server.on("/api/wifi-save", HTTP_POST, [](AsyncWebServerRequest *request) {
+    String ssid, password;
+
+    if (request->hasParam("ssid", true) && request->hasParam("password", true))
+    {
+      AsyncWebParameter *pssid = request->getParam("ssid", true);
+      AsyncWebParameter *ppassword = request->getParam("password", true);
+      ssid = pssid->value();
+      password = ppassword->value();
+
+      Serial.print(__FILE__);
+      Serial.print(":");
+      Serial.print(__LINE__);
+      Serial.println(ssid);
+      Serial.println(password);
+
+      if (!saveWiFiconfig(ssid.c_str(), password.c_str()))
+      {
+        Serial.println("DID NOT SAVE WIFI CONFIG");
+      }
+    }
 
     request->send(200, "application/json", "{ \"status\": \"OK\" }");
   });
 
   server.on("/api/gsm-contact", HTTP_POST, [](AsyncWebServerRequest *request) {
-    // TODO
-    // SAVE FROM FORM TO MEMORKI KONTAKT USERA
-    request->send(200, "application/json", "{ \"status\": \"OK\" }");
+    String name, number;
+
+    if (request->hasParam("name", true) && request->hasParam("number", true))
+    {
+      AsyncWebParameter *pname = request->getParam("name", true);
+      AsyncWebParameter *pnumber = request->getParam("number", true);
+      name = pname->value();
+      number = pnumber->value();
+
+      Serial.println(name);
+      Serial.println(number);
+
+      if (!saveGSMconfig(name.c_str(), number.c_str()))
+      {
+        Serial.print(__FILE__);
+        Serial.print(":");
+        Serial.print(__LINE__);
+        Serial.println(" DID NOT SAVE GSM CONFIG");
+      }
+    }
+
+    request->send(200, "application/json", "{ \"status\": \"ok\" }");
   });
 
   server.on("/api/gsm-contact", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    // GET SAVED USER TEL NAME
-    request->send(200, "application/json", "{ \"status\": \"OK\" }");
+    char name[64];
+    memset(name, 0, 64);
+    char number[18];
+    memset(number, 0, 18);
+
+    if (!loadGSMconfig(name, number))
+    {
+      Serial.print(__FILE__);
+      Serial.print(":");
+      Serial.print(__LINE__);
+      Serial.println(" cannot load gsm config");
+    }
+
+    String response = "{ \"name\": \"";
+    response += name;
+    response += "\", \"number\" : \"";
+    response += number;
+    response += "\" }";
+
+    request->send(200, "application/json", response);
   });
 
   server.on("/api/gsm-signal", HTTP_GET, [](AsyncWebServerRequest *request) {
     // TODO
     // GET SIGNAL STRENGTH
-    request->send(200, "application/json", "{ \"status\": \"OK\" }");
+    request->send(200, "application/json", "{ \"status\": \"-48\" }");
   });
 
   server.on("/api/gsm-status", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -331,20 +370,49 @@ void setup()
     request->send(200, "application/json", "{ \"status\": \"OK\" }");
   });
 
+  server.on("/api/gsm-number", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // TODO
+    // PRINT NUMBER
+    request->send(200, "application/json", "{ \"number\": \"0048633424720\" }");
+  });
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/index.html");
+  });
+
+  server.serveStatic("/", SPIFFS, "/");
+
+  server.on("/api/*", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "OK");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Expose-Headers", "*");
+    response->addHeader("Access-Control-Allow-Credentials", "true");
+    request->send(response);
+  });
+
   server.begin();
 
   // gsmSetup
   // serverSetup
+
+  pinMode(5, INPUT_PULLUP);
 }
+
+int timePassed = 0;
 
 void loop()
 {
-  if (SerialAT.available()) {
-    SerialMon.write(SerialAT.read());
+  if (!digitalRead(5))
+  {
+    if (millis() - timePassed > 5000)
+    {
+      deleteWiFiconfig();
+      deleteGSMconfig();
+      ESP.restart();
+    }
   }
-  
-  if (SerialMon.available()) {
-    SerialAT.write(SerialMon.read());
+  else
+  {
+    timePassed = millis();
   }
-
 }

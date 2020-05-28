@@ -6,14 +6,20 @@
 <p>Podaj nr telefonu do komunikacji</p>
 <form [formGroup]="setup" (submit)="onSubmit()">
     <app-input-wrapper>
-        <img class="icon" src="assets/icons/cloud.svg">
+        <img class="icon" src="assets/cloud.svg">
         <label>Nazwa</label>
         <input appInputStyler formControlName="name" placeholder="Nazwa kontaktu">
     </app-input-wrapper>
     <app-input-wrapper>
-        <img class="icon" src="assets/icons/password.svg">
+        <img class="icon" src="assets/password.svg">
         <label>Tel</label>
         <input type="tel" appInputStyler formControlName="phone" placeholder="603 422 234">
     </app-input-wrapper>
     <button appButtonStyler type="submit">Zapisz</button>
 </form>
+<ng-container *ngIf="!setup.controls.name.valid && setup.controls.name.touched && !setup.controls.name.disabled">
+    <p class="accent">Podaj poprawną nazwę</p>
+</ng-container>
+<ng-container *ngIf="!setup.controls.phone.valid && setup.controls.phone.touched && !setup.controls.phone.disabled">
+    <p class="accent">Podaj poprawny numer telefonu</p>
+</ng-container>

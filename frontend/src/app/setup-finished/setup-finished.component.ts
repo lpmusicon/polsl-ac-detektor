@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { ApiService } from '../api.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-setup-finished',
@@ -7,9 +9,14 @@ import { Component, OnInit } from '@angular/core';
 })
 export class SetupFinishedComponent implements OnInit {
 
-  constructor() { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
+    this.api.refreshSetup();
+
+    setTimeout(() => {
+      this.router.navigateByUrl('/');
+    }, 5000);
   }
 
 }
