@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ApiService } from '../api.service';
 import { Subscription, timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -8,7 +8,7 @@ import { switchMap } from 'rxjs/operators';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
 
   public entries = [];
 
@@ -19,5 +19,9 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.refreshSub = timer(0, 10000).pipe(switchMap(() => this.api.notification())
     ).subscribe({ next: (data) => { this.entries = data.entries; } });
+  }
+
+  ngOnDestroy(): void {
+    this.refreshSub.unsubscribe();
   }
 }

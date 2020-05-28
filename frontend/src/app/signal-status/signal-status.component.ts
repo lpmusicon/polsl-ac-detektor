@@ -26,10 +26,10 @@ export class SignalStatusComponent implements OnInit, OnDestroy {
   }
 
   private transformStatus(data) {
-    const minV = 3600;
-    const maxV = 4200;
+    const minV = 3700;
+    const maxV = 4175;
 
-    this.batteryPercentage = Math.ceil(((data.status - minV) / (maxV - minV)) * 100);
+    this.batteryPercentage = Math.max(Math.min(Math.ceil(((data.status - minV) / (maxV - minV)) * 100), 100), 0);
 
     if(this.batteryPercentage > 75) {
       this.statusIcon = "assets/battery-full.svg";

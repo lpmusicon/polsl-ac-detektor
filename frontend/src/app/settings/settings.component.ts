@@ -61,7 +61,7 @@ export class SettingsComponent implements OnInit {
 
     this.api.gsmSignal().subscribe({
       next: (data) => {
-        this.gsm.rssi = `${data.status} dBm`;
+        this.gsm.rssi = `${-113 + 2*data.status} dBm`;
       }
     });
 

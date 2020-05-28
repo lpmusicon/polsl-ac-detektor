@@ -1,7 +1,6 @@
 const char wifissid[] = "UPC0444679";
 const char wifipassword[] = "x58nzmvfTzrf";
 
-#include <PubSubClient.h>
 #include <FS.h>
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
@@ -10,46 +9,30 @@ const char wifipassword[] = "x58nzmvfTzrf";
 #include "config.h"
 #include "notification.h"
 
-// #define TINY_GSM_MODEM_SIM800
-
 #define GSM_RESET_PIN 15
 #define GSM_TX_PIN 4
 #define GSM_RX_PIN 5
 
-// #include <SoftwareSerial.h>
-// SoftwareSerial SerialAT(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
-// #define SerialMon Serial
-// #define TINY_GSM_DEBUG SerialMon
-// #include <TinyGsmClient.h>
+#define ADC_CALIBRATION_OFFSET 0
 
-const uint8_t PIN_LED = 2;
-const uint8_t PIN2_LED = 16;
+// #define DUMP_AT_COMMANDS
+// #define TINY_GSM_DEBUG Serial
+#define TINY_GSM_MODEM_SIM800
+#include <TinyGsmClient.h>
+#include <PubSubClient.h>
 
-/*
- * Info odnośnie encType
- * TKIP (WPA) = 2
- * WEP = 5
- * CCMP (WPA) = 4
- * NONE = 7
- * AUTO = 8
- * UPC Wi-Free 255 z jakiegoś powodu (Nowy standard UPC!, pewnie -1)
-*/
+#ifdef DUMP_AT_COMMANDS
+  #include <StreamDebugger.h>
+  StreamDebugger debugger(Serial2, Serial);
+  TinyGsm modem(debugger);
+#else
+  TinyGsm modem(Serial2);
+#endif
+TinyGsmClient client(modem);
+PubSubClient mqtt(client);
 
-/* 
- * Setup
- * 
- * Trzeba:
- *  > Sprawdzić czy jest konfig
- *  > > Jak jest to wczytać i witaj świecie
- *  > > W innym wypadku trzeba załadować konfigurację podstawową i dać użytkownikowi się wykazać
- *  > Odpalić WiFi dla użytkownika
- *  > Połączyć się z modułem GSM
- *  > Muszę sprawdzać poziom zasilania (dzielnik napięcia na rezystorze wystarczy 1/3 - 2/3)
- *  > Pilnować pinu zasilania (też dzielnik napięcia 5V - 1/3 2/3)
-*/
-
-#define AC_PIN 5       // PIN D1
-#define BATTERY_PIN A0 // PIN ADC0
+#define AC_PIN 34      
+#define BATTERY_PIN 32
 
 #define SERIAL_BAUD 115200
 
@@ -68,9 +51,15 @@ void networkToJSONObject(int id, char *string)
 uint32_t rate = 0;
 
 int8_t networks = 0;
+uint16_t batteryVoltage = 0;
+bool acOn = false;
+String gsmNumber;
 
 void setup()
 {
+  pinMode(BATTERY_PIN, INPUT);
+  pinMode(AC_PIN, INPUT);
+
   WiFi.softAPdisconnect();
 
   pinMode(GSM_RESET_PIN, OUTPUT);
@@ -276,13 +265,15 @@ void setup()
   });
 
   server.on("/api/battery-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    request->send(200, "application/json", "{ \"status\": \"3800\" }");
+    String response = "{ \"status\": \""; response += batteryVoltage; response += "\"}";
+    request->send(200, "application/json", response);
   });
 
   server.on("/api/ac-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    request->send(200, "application/json", "{ \"status\": \"ON\" }");
+    String response = "{ \"status\": \"";
+    response += acOn;
+    response += "\" }";
+    request->send(200, "application/json", response);
   });
 
   server.on("/api/wifi-save", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -359,21 +350,17 @@ void setup()
   });
 
   server.on("/api/gsm-signal", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    // GET SIGNAL STRENGTH
-    request->send(200, "application/json", "{ \"status\": \"-48\" }");
-  });
-
-  server.on("/api/gsm-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    // GET SIGNAL STRENGTH
-    request->send(200, "application/json", "{ \"status\": \"OK\" }");
+    String response = "{ \"status\": \"";
+    response += modem.getSignalQuality();
+    response += "\" }";
+    request->send(200, "application/json", response);
   });
 
   server.on("/api/gsm-number", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // TODO
-    // PRINT NUMBER
-    request->send(200, "application/json", "{ \"number\": \"0048633424720\" }");
+    String response = "{ \"number\": \"";
+    response += gsmNumber;
+    response += "\"}";
+    request->send(200, "application/json", response);
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -396,9 +383,100 @@ void setup()
   // serverSetup
 
   pinMode(5, INPUT_PULLUP);
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+
+  uint32_t rate = 115200;
+
+  Serial2.begin(rate, SERIAL_8N1);
+  modem.sendAT("+IPR=115200");
+
+  if (!modem.restart())
+  {
+    Serial.print(__FILE__);
+    Serial.print(":");
+    Serial.print(__LINE__);
+    Serial.println(" couldn't restart");
+  }
+  else
+  {
+    Serial.println("restarted");
+  }
+
+  if (!modem.waitForNetwork(300000L))
+  {
+    Serial.print(__FILE__);
+    Serial.print(":");
+    Serial.print(__LINE__);
+    Serial.println(" couldn't connect");
+  }
+  else
+  {
+    Serial.println("network reg");
+  }
+
+  // if(!modem.sendSMS("+48786153444", "Siemanko witam w mojej kuchni")) {
+  //   Serial.print(__FILE__);
+  //   Serial.print(":");
+  //   Serial.print(__LINE__);
+  //   Serial.println(" SMS not sent");
+  // };
+
+  // if (!modem.gprsConnect("internet"))
+  // {
+  //   Serial.print(__FILE__);
+  //   Serial.print(":");
+  //   Serial.print(__LINE__);
+  //   Serial.println(" can't connect gprs");
+  // }
+  // else
+  // {
+  //   Serial.print(__FILE__);
+  //   Serial.print(":");
+  //   Serial.print(__LINE__);
+  //   Serial.println(" connected GPRS");
+  // }
+
+  // Serial.print("isGRPSConnected ");
+  // Serial.println(modem.isGprsConnected() ? "YES" : "NO");
+
+  // mqtt.setServer("broker.hivemq.com", 1883);
+  // mqtt.setCallback(mqttCallback);
+
+  // if (!mqtt.connect("clientid-client-test"))
+  // {
+  //   Serial.print(__FILE__);
+  //   Serial.print(":");
+  //   Serial.print(__LINE__);
+  //   Serial.println(" can't connect mqtt");
+  // }
+
+  // if (!!mqtt.publish("/esp32lpm/esp32-test", "hello world"))
+  // {
+  //   Serial.print(__FILE__);
+  //   Serial.print(":");
+  //   Serial.print(__LINE__);
+  //   Serial.println(" can't publish mqtt");
+  // }
+
+  modem.sendAT("+CNUM");
+  modem.stream.readStringUntil('\n');
+  modem.stream.readStringUntil('"');
+  modem.stream.readStringUntil('"');
+  modem.stream.readStringUntil('"');
+  String data = modem.stream.readStringUntil('"');
+  modem.streamClear();
+  Serial.print(__FILE__);
+  Serial.print(":");
+  Serial.print(__LINE__);
+  Serial.print(" DATA: "); Serial.println(data);
+
+  gsmNumber = data;
 }
 
 int timePassed = 0;
+int period = 5000;
+unsigned long time_now = 0;
 
 void loop()
 {
@@ -406,7 +484,7 @@ void loop()
   {
     if (millis() - timePassed > 5000)
     {
-      deleteWiFiconfig();
+      deleteWiFiconfig();                                                                                                                                                                                            
       deleteGSMconfig();
       ESP.restart();
     }
@@ -414,5 +492,18 @@ void loop()
   else
   {
     timePassed = millis();
+  }
+
+  // mqtt.loop();
+  if (millis() - time_now > period)
+  {
+    time_now += period;
+    batteryVoltage = batteryVoltage * 0.4 + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, 5000) + ADC_CALIBRATION_OFFSET;
+    bool acOn = digitalRead(AC_PIN);
+    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - BATTERY PIN mV "); Serial.println(batteryVoltage);
+    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - AC PIN "); Serial.println(acOn ? "ON" : "OFF");
+    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - Signal Quality "); Serial.println(modem.getSignalQuality());
+    Serial.println("-----");
+    // mqtt.publish("/esp32lpm/esp32-test", modem.getGSMDateTime(TinyGSMDateTimeFormat::DATE_FULL).c_str());
   }
 }

@@ -7,7 +7,7 @@
 #define GSM_CONFIG "/gsm.config"
 
 #define DEFAULT_WIFI_SSID "defaultWIFI"
-#define DEFAULT_WIFI_PASSWORD ""
+#define DEFAULT_WIFI_PASSWORD "12345678"
 
 uint8_t isConfigured();
 bool saveWiFiconfig(const char * const SSID, const char * const PASSWORD);
