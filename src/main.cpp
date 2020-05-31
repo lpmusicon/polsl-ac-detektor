@@ -1,6 +1,3 @@
-const char wifissid[] = "UPC0444679";
-const char wifipassword[] = "x58nzmvfTzrf";
-
 #include <FS.h>
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
@@ -12,8 +9,6 @@ const char wifipassword[] = "x58nzmvfTzrf";
 #define GSM_RESET_PIN 15
 #define GSM_TX_PIN 4
 #define GSM_RX_PIN 5
-
-#define ADC_CALIBRATION_OFFSET 0
 
 // #define DUMP_AT_COMMANDS
 // #define TINY_GSM_DEBUG Serial
@@ -38,6 +33,8 @@ PubSubClient mqtt(client);
 
 char SSID[33];
 char PASSWORD[64];
+char AP_SSID[33];
+char AP_PASSWORD[64];
 
 #define HTTP_SERVER_PORT 80
 
@@ -75,7 +72,8 @@ void setup()
   Serial.println(acConnected);
   Serial.println(battV);
 
-  loadDefaultWiFiconfig(SSID, PASSWORD);
+  loadDefaultWiFiconfig(AP_SSID, AP_PASSWORD);
+  loadWiFiconfig(SSID, PASSWORD);
 
   Serial.print("ssid: ");
   Serial.println(SSID);
@@ -89,7 +87,7 @@ void setup()
 
   WiFi.printDiag(Serial);
 
-  WiFi.begin(wifissid, wifipassword);
+  WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("Connecting");
@@ -498,7 +496,7 @@ void loop()
   if (millis() - time_now > period)
   {
     time_now += period;
-    batteryVoltage = batteryVoltage * 0.4 + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, 5000) + ADC_CALIBRATION_OFFSET;
+    batteryVoltage = batteryVoltage * 0.4 + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, 5000);
     bool acOn = digitalRead(AC_PIN);
     Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - BATTERY PIN mV "); Serial.println(batteryVoltage);
     Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - AC PIN "); Serial.println(acOn ? "ON" : "OFF");
