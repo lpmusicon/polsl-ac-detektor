@@ -23,4 +23,16 @@
     <span></span>
     <p class="date">{{ entry.date }}</p>
   </div>
+  <div class="item" *ngIf="entries.length == 0">
+    <ng-container>
+      <p>Brak Powiadomień</p>
+    </ng-container>
+    <span></span>
+  </div>
+  <div class="item" *ngIf="entries.length == 0">
+    <ng-container>
+      <p>(╯‵□′)╯︵┻━┻</p>
+    </ng-container>
+    <span></span>
+  </div>
 </div>

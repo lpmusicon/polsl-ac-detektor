@@ -6,104 +6,156 @@
 #include "config.h"
 #include "notification.h"
 
-#define GSM_RESET_PIN 15
-#define GSM_TX_PIN 4
-#define GSM_RX_PIN 5
+#define BUTTON_PIN 5
+#define GSM_RESET_PIN 13
 
 // #define DUMP_AT_COMMANDS
 // #define TINY_GSM_DEBUG Serial
 #define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
-#include <PubSubClient.h>
 
 #ifdef DUMP_AT_COMMANDS
-  #include <StreamDebugger.h>
-  StreamDebugger debugger(Serial2, Serial);
-  TinyGsm modem(debugger);
+#include <StreamDebugger.h>
+StreamDebugger debugger(Serial2, Serial);
+TinyGsm modem(debugger);
 #else
-  TinyGsm modem(Serial2);
+TinyGsm modem(Serial2);
 #endif
 TinyGsmClient client(modem);
-PubSubClient mqtt(client);
 
-#define AC_PIN 34      
+#define AC_PIN 34
 #define BATTERY_PIN 32
-
 #define SERIAL_BAUD 115200
+#define HTTP_SERVER_PORT 80
+#define MAX_MAPPED_VOLTAGE 5050
 
+/**
+ * Infrastructure SSID
+ */
 char SSID[33];
+
+/**
+ * Infrastructure Password
+ */
 char PASSWORD[64];
+
+/**
+ * AP SSID
+ */
 char AP_SSID[33];
+
+/**
+ * AP Password
+ */
 char AP_PASSWORD[64];
 
-#define HTTP_SERVER_PORT 80
+/**
+ * Device SIM number
+ */
+String gsmNumber;
 
 AsyncWebServer server(HTTP_SERVER_PORT);
 
+/**
+ * This magic function gets formatted time and date from GSM module
+ * @returns current time/date string HH:mm dd/MM/YYYY
+ */
+String getTimeString()
+{
+  /**
+   * Have to get every part of time/date string
+   */
+  int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
+  float timezone = 0.0;
+  if (!modem.getNetworkTime(&year, &month, &day, &hour, &min, &sec, &timezone))
+  {
+    Serial.printf("%s:%d - cannot get network time\n", __FILE__, __LINE__);
+  }
+
+  char buf[20];
+  sprintf(buf, "%02d:%02d %02d/%02d/%d", hour, min, day, month, year);
+
+  return String(buf);
+}
+
+/**
+ * This hacky function gets SIM number and sets it to local variable
+ * TONS of side effect coding
+ * but it works
+ */
+void getSIMNumber()
+{
+  modem.sendAT("+CNUM");
+  modem.stream.readStringUntil('\n');
+  modem.stream.readStringUntil('"');
+  modem.stream.readStringUntil('"');
+  modem.stream.readStringUntil('"');
+  String data = modem.stream.readStringUntil('"');
+  modem.streamClear();
+  Serial.printf("%s:%d - DATA %s\n", __FILE__, __LINE__, data.c_str());
+
+  gsmNumber = data;
+}
+
+/**
+ * Formats network to JSON per ID
+ * Outputs to string
+ */
 void networkToJSONObject(int id, char *string)
 {
   snprintf(string, 72, "{\"SSID\":\"%s\",\"dBm\":\"%d\",\"encType\":\"%d\"}", WiFi.SSID(id).c_str(), WiFi.RSSI(id), WiFi.encryptionType(id));
 }
 
-uint32_t rate = 0;
-
 int8_t networks = 0;
 uint16_t batteryVoltage = 0;
 bool acOn = false;
-String gsmNumber;
 
 void setup()
 {
+  /**
+   * GPIO setup
+   */
   pinMode(BATTERY_PIN, INPUT);
   pinMode(AC_PIN, INPUT);
-
-  WiFi.softAPdisconnect();
-
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(GSM_RESET_PIN, OUTPUT);
-  digitalWrite(GSM_RESET_PIN, 1);
-  SPIFFS.begin();
-  Serial.begin(SERIAL_BAUD);
-  Serial.setDebugOutput(true);
 
-  pinMode(AC_PIN, INPUT_PULLUP);
-  bool acConnected = digitalRead(AC_PIN);
-  int battV = analogRead(BATTERY_PIN);
+  /**
+   * This PIN can't be LOW
+   * Othewise GSM will not start
+   */
+  digitalWrite(GSM_RESET_PIN, HIGH);
 
-  Serial.println(acConnected);
-  Serial.println(battV);
+  analogSetCycles(255);
 
-  loadDefaultWiFiconfig(AP_SSID, AP_PASSWORD);
-  loadWiFiconfig(SSID, PASSWORD);
-
-  Serial.print("ssid: ");
-  Serial.println(SSID);
-  Serial.print("password: ");
-  Serial.println(PASSWORD);
+  batteryVoltage = map(analogRead(BATTERY_PIN), 0, 4096, 0, MAX_MAPPED_VOLTAGE);
+  acOn = digitalRead(AC_PIN);
 
   WiFi.persistent(false);
-
-  WiFi.mode(WIFI_AP_STA);
   WiFi.setAutoReconnect(false);
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAPdisconnect();
+  WiFi.disconnect();
 
-  WiFi.printDiag(Serial);
+  SPIFFS.begin();
+  Serial.begin(SERIAL_BAUD);
 
-  WiFi.begin(SSID, PASSWORD);
-  while (WiFi.status() != WL_CONNECTED)
+  if (loadWiFiconfig(SSID, PASSWORD))
   {
-    Serial.println("Connecting");
-    delay(1000);
+    WiFi.begin(SSID, PASSWORD);
+    Serial.printf("%s:%d - SSID %s, PASSWORD %s\n", __FILE__, __LINE__, SSID, PASSWORD);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.println("Connecting");
+      delay(500);
+    }
+    Serial.printf("%s:%d - Connected WiFi IP: %s\n", __FILE__, __LINE__, WiFi.localIP().toString().c_str());
   }
 
-  Serial.print("Connected WiFi IP:");
-  Serial.println(WiFi.localIP());
-
-  WiFi.softAP(SSID, PASSWORD);
-
-#define SCAN_NOT_TRIGGERED -2
-#define SCAN_NOT_FINISHED -1
+  loadDefaultWiFiconfig(AP_SSID, AP_PASSWORD);
+  WiFi.softAP(AP_SSID, AP_PASSWORD);
 
   server.on("/api/setup-completed", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // GOT HELP ME REFACTOR THIS
     // STRING BAD
     // CHAR* GOOD
 
@@ -116,14 +168,14 @@ void setup()
 
   server.on("/api/wifi-scan", HTTP_GET, [](AsyncWebServerRequest *request) {
     int scanResult = WiFi.scanComplete();
-    if (scanResult == SCAN_NOT_TRIGGERED)
+    if (scanResult == WIFI_SCAN_NOT_TRIGGERED)
     {
       WiFi.scanDelete();
       networks = WiFi.scanNetworks(true, false);
 
       request->send(200, "application/json", "{ \"status\": \"OK\" }");
     }
-    else if (scanResult == SCAN_NOT_FINISHED)
+    else if (scanResult == WIFI_SCAN_NOT_FINISHED)
     {
       request->send(200, "application/json", "{ \"status\": \"NOT_FINISHED\" }");
     }
@@ -138,14 +190,11 @@ void setup()
     request->send(200, "application/json", "{\"status\": \"OK\"}");
   });
 
-#define MINIMUM_RESPONSE_SIZE 30
-#define MAXIMUM_OBJECT_SIZE 72
-
   server.on("/api/wifi-networks", HTTP_GET, [](AsyncWebServerRequest *request) {
     int scanResult = WiFi.scanComplete();
     if (scanResult >= 0)
     {
-      uint16_t responseSize = MINIMUM_RESPONSE_SIZE + (MAXIMUM_OBJECT_SIZE + 1) * scanResult + 1;
+      uint16_t responseSize = MINIMUM_WIFI_NETWORK_RESPONSE_SIZE + (MAXIMUM_WIFI_NETWORK_OBJECT_SIZE + 1) * scanResult + 1;
       char *response = new char[responseSize];
       memset(response, 0, responseSize);
 
@@ -153,7 +202,7 @@ void setup()
 
       for (int i = 0; i < scanResult; i++)
       {
-        char *object = new char[MAXIMUM_OBJECT_SIZE];
+        char *object = new char[MAXIMUM_WIFI_NETWORK_OBJECT_SIZE];
         networkToJSONObject(i, object);
         strcat(response, object);
 
@@ -171,11 +220,11 @@ void setup()
       request->send(200, "application/json", response);
       delete[] response;
     }
-    else if (scanResult == SCAN_NOT_FINISHED)
+    else if (scanResult == WIFI_SCAN_NOT_FINISHED)
     {
       request->send(200, "application/json", "{ \"status\": \"NOT_FINISHED\" }");
     }
-    else if (scanResult == SCAN_NOT_TRIGGERED)
+    else if (scanResult == WIFI_SCAN_NOT_TRIGGERED)
     {
       request->send(200, "application/json", "{ \"status\": \"NOT_TRIGGERED\" }");
     }
@@ -197,16 +246,21 @@ void setup()
   });
 
   server.on("/api/notification", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Notification one(0, "13:30 13/03/2020");
-    Notification two(1, "12:30 13/03/2020");
-    Notification three(2, "11:30 13/03/2020");
-    Notification four(0, "10:50 13/03/2020");
-
+    File f = SPIFFS.open(NOTIFICATION_DATA, "r");
     String response = "{\"entries\":[";
-    response += one.toJSON() + ",";
-    response += two.toJSON() + ",";
-    response += three.toJSON() + ",";
-    response += four.toJSON();
+
+    while (f.available())
+    {
+      int type = f.readStringUntil(',').toInt();
+      String date = f.readStringUntil('\n');
+      Notification n(type, date);
+      response += n.toJSON();
+      if (f.available())
+      {
+        response += ",";
+      }
+    }
+
     response += "]}";
     request->send(200, "application/json", response);
   });
@@ -226,13 +280,7 @@ void setup()
       ssid = pssid->value();
       password = ppassword->value();
 
-      Serial.print(__FILE__);
-      Serial.print(":");
-      Serial.print(__LINE__);
-      Serial.print("param ssid: ");
-      Serial.println(ssid);
-      Serial.print("password: ");
-      Serial.println(password);
+      Serial.printf("%s:%d - SSID: %s, PASSWORD: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
 
       WiFi.persistent(false);
       WiFi.begin(ssid.c_str(), password.c_str());
@@ -250,7 +298,6 @@ void setup()
 
   server.on("/api/wifi-disconnect", HTTP_DELETE, [](AsyncWebServerRequest *request) {
     WiFi.disconnect();
-
     request->send(200, "application/json", "{ \"status\": \"ok\" }");
   });
 
@@ -263,7 +310,9 @@ void setup()
   });
 
   server.on("/api/battery-status", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String response = "{ \"status\": \""; response += batteryVoltage; response += "\"}";
+    String response = "{ \"status\": \"";
+    response += batteryVoltage;
+    response += "\"}";
     request->send(200, "application/json", response);
   });
 
@@ -284,11 +333,7 @@ void setup()
       ssid = pssid->value();
       password = ppassword->value();
 
-      Serial.print(__FILE__);
-      Serial.print(":");
-      Serial.print(__LINE__);
-      Serial.println(ssid);
-      Serial.println(password);
+      Serial.printf("%s:%d - SSID: %s, PASSWORD: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
 
       if (!saveWiFiconfig(ssid.c_str(), password.c_str()))
       {
@@ -314,10 +359,7 @@ void setup()
 
       if (!saveGSMconfig(name.c_str(), number.c_str()))
       {
-        Serial.print(__FILE__);
-        Serial.print(":");
-        Serial.print(__LINE__);
-        Serial.println(" DID NOT SAVE GSM CONFIG");
+        Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "did not save gsm config");
       }
     }
 
@@ -332,10 +374,7 @@ void setup()
 
     if (!loadGSMconfig(name, number))
     {
-      Serial.print(__FILE__);
-      Serial.print(":");
-      Serial.print(__LINE__);
-      Serial.println(" cannot load gsm config");
+      Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't load gsm config");
     }
 
     String response = "{ \"name\": \"";
@@ -365,8 +404,6 @@ void setup()
     request->send(SPIFFS, "/index.html");
   });
 
-  server.serveStatic("/", SPIFFS, "/");
-
   server.on("/api/*", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "OK");
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -375,14 +412,7 @@ void setup()
     request->send(response);
   });
 
-  server.begin();
-
-  // gsmSetup
-  // serverSetup
-
-  pinMode(5, INPUT_PULLUP);
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
+  server.serveStatic("/", SPIFFS, "/");
 
   uint32_t rate = 115200;
 
@@ -391,99 +421,54 @@ void setup()
 
   if (!modem.restart())
   {
-    Serial.print(__FILE__);
-    Serial.print(":");
-    Serial.print(__LINE__);
-    Serial.println(" couldn't restart");
+    Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't restart modem");
+    ESP.restart();
   }
-  else
-  {
-    Serial.println("restarted");
-  }
+  Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem restarted");
 
   if (!modem.waitForNetwork(300000L))
   {
-    Serial.print(__FILE__);
-    Serial.print(":");
-    Serial.print(__LINE__);
-    Serial.println(" couldn't connect");
+    Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't connect modem");
+    ESP.restart();
   }
-  else
-  {
-    Serial.println("network reg");
-  }
+  Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem connected to network");
+  Serial.printf("%s:%d - Current Time: %s\n", __FILE__, __LINE__, getTimeString().c_str());
 
-  // if(!modem.sendSMS("+48786153444", "Siemanko witam w mojej kuchni")) {
-  //   Serial.print(__FILE__);
-  //   Serial.print(":");
-  //   Serial.print(__LINE__);
-  //   Serial.println(" SMS not sent");
-  // };
-
-  // if (!modem.gprsConnect("internet"))
-  // {
-  //   Serial.print(__FILE__);
-  //   Serial.print(":");
-  //   Serial.print(__LINE__);
-  //   Serial.println(" can't connect gprs");
-  // }
-  // else
-  // {
-  //   Serial.print(__FILE__);
-  //   Serial.print(":");
-  //   Serial.print(__LINE__);
-  //   Serial.println(" connected GPRS");
-  // }
-
-  // Serial.print("isGRPSConnected ");
-  // Serial.println(modem.isGprsConnected() ? "YES" : "NO");
-
-  // mqtt.setServer("broker.hivemq.com", 1883);
-  // mqtt.setCallback(mqttCallback);
-
-  // if (!mqtt.connect("clientid-client-test"))
-  // {
-  //   Serial.print(__FILE__);
-  //   Serial.print(":");
-  //   Serial.print(__LINE__);
-  //   Serial.println(" can't connect mqtt");
-  // }
-
-  // if (!!mqtt.publish("/esp32lpm/esp32-test", "hello world"))
-  // {
-  //   Serial.print(__FILE__);
-  //   Serial.print(":");
-  //   Serial.print(__LINE__);
-  //   Serial.println(" can't publish mqtt");
-  // }
-
-  modem.sendAT("+CNUM");
-  modem.stream.readStringUntil('\n');
-  modem.stream.readStringUntil('"');
-  modem.stream.readStringUntil('"');
-  modem.stream.readStringUntil('"');
-  String data = modem.stream.readStringUntil('"');
-  modem.streamClear();
-  Serial.print(__FILE__);
-  Serial.print(":");
-  Serial.print(__LINE__);
-  Serial.print(" DATA: "); Serial.println(data);
-
-  gsmNumber = data;
+  getSIMNumber();
+  server.begin();
 }
 
+/**
+ * This needs cleanup,
+ * two periods are not needed
+ */
 int timePassed = 0;
 int period = 5000;
 unsigned long time_now = 0;
+unsigned long check_time_now = 0;
+int check_interval = 1000;
+bool lowBatterySMSsent = false;
+
+#define BATTERY_LOW_CHARGE_VOLTAGE 3500
+#define BUTTON_RESET_TIME_THRESHOLD 5000
 
 void loop()
 {
-  if (!digitalRead(5))
+  /**
+   * Reset za pomocą przycisku
+   */
+  if (!digitalRead(BUTTON_PIN))
   {
-    if (millis() - timePassed > 5000)
+    if (millis() - timePassed > BUTTON_RESET_TIME_THRESHOLD)
     {
-      deleteWiFiconfig();                                                                                                                                                                                            
+      /**
+       * Delete everything, reboot uC
+       */
+      deleteWiFiconfig();
       deleteGSMconfig();
+      deleteNotifications();
+      WiFi.disconnect();
+      WiFi.softAPdisconnect();
       ESP.restart();
     }
   }
@@ -492,16 +477,108 @@ void loop()
     timePassed = millis();
   }
 
-  // mqtt.loop();
+  /**
+   * Main power handling loop
+   */
+  bool currentAC = digitalRead(AC_PIN);
+  if (millis() - check_time_now > check_interval)
+  {
+    /**
+     * Filtr uśredniający z poprzedniej wartości ze względu na dość duży szum ADC w ESP32
+     * Wartości są mapowane z 10 bitowego zakresu 3.3V do 5V (ze względu na dzielnik napięcia)
+     */
+    batteryVoltage = 0.4 * batteryVoltage + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, MAX_MAPPED_VOLTAGE);
+
+    /**
+     * Detekcja jest możliwa tylko gdy urządzenie jest ustawione
+     */
+    if (isConfigured() == 1)
+    {
+      char name[64], number[18];
+      memset(name, 0, 64);
+      memset(number, 0, 18);
+
+      /**
+       * GSM config is crucial to proper device functioning
+       * if it is not present delete config
+       * start over
+       */
+      if (!loadGSMconfig(name, number))
+      {
+        Serial.printf("%s:%d - GSM Config %s\n", __FILE__, __LINE__, "");
+        deleteWiFiconfig();
+        deleteGSMconfig();
+        deleteNotifications();
+        WiFi.disconnect();
+        WiFi.softAPdisconnect();
+        ESP.restart();
+      }
+
+      /**
+       * State detection change
+       * two power states are recognized
+       */
+      bool justConnected = acOn && !currentAC;
+      bool justDisconnected = !acOn && currentAC;
+      String smsText = "Hej ";
+      smsText += name;
+      if (justConnected)
+      {
+        smsText += ", prad wlasnie zostal odlaczony\n";
+        writeNotification(NOTIFICATION_TYPE::POWER_LOSS, getTimeString());
+      }
+      else if (justDisconnected)
+      {
+        smsText += ", prad wlasnie zostal podlaczony\n";
+        writeNotification(NOTIFICATION_TYPE::POWER_CONNECT, getTimeString());
+        lowBatterySMSsent = false;
+      }
+
+      /**
+       * When state changes we send SMS to client
+       * this ensures sms flow
+       */
+      if (justConnected || justDisconnected)
+      {
+        smsText += getTimeString();
+        Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, smsText.c_str());
+        modem.sendSMS(number, smsText);
+      }
+
+      /**
+     * We have to sens SMS when battery is low
+     * best case scenario we would have to go to sleep
+     * and wait for power interrupt
+     * not here however as it may never happen with 3000mAh
+     * battery and uptime of 10+hrs
+     */
+      if (!acOn && batteryVoltage < BATTERY_LOW_CHARGE_VOLTAGE && !lowBatterySMSsent)
+      {
+        lowBatterySMSsent = true;
+        String smsBatteryText = "Hej ";
+        smsBatteryText += name;
+        smsBatteryText += ", niski stan baterii. Urzadzenie moze sie wkrotce wylaczyc\n";
+        smsBatteryText += getTimeString();
+        writeNotification(NOTIFICATION_TYPE::LOW_BATTERY, getTimeString());
+        Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, smsBatteryText.c_str());
+        modem.sendSMS(number, smsBatteryText);
+      }
+    }
+
+    /**
+     * Zapisuje aktualny stan do porównania
+     */
+    acOn = currentAC;
+  }
+
+  /**
+   * Periodic diagnostic print on screen
+   */
   if (millis() - time_now > period)
   {
     time_now += period;
-    batteryVoltage = batteryVoltage * 0.4 + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, 5000);
-    bool acOn = digitalRead(AC_PIN);
-    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - BATTERY PIN mV "); Serial.println(batteryVoltage);
-    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - AC PIN "); Serial.println(acOn ? "ON" : "OFF");
-    Serial.print(__FILE__); Serial.print(":"); Serial.print(__LINE__); Serial.print(" - Signal Quality "); Serial.println(modem.getSignalQuality());
     Serial.println("-----");
-    // mqtt.publish("/esp32lpm/esp32-test", modem.getGSMDateTime(TinyGSMDateTimeFormat::DATE_FULL).c_str());
+    Serial.printf("%s:%d - BATTERY PIN mV %d\n", __FILE__, __LINE__, batteryVoltage);
+    Serial.printf("%s:%d - AC PIN %s\n", __FILE__, __LINE__, acOn ? "ON" : "OFF");
   }
 }
