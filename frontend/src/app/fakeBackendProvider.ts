@@ -87,7 +87,11 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
 
         function wifiConnect() {
-            currentWifi = body;
+            console.log(body);
+            let wifi = { ssid: "", password: "" };
+            wifi.ssid = body.get("ssid");
+            wifi.password = body.get("password");
+            currentWifi = wifi;
             console.log(currentWifi);
 
             return ok({

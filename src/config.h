@@ -5,7 +5,7 @@
 #define MQTT_CONFIG "/mqtt.config"
 #define GSM_CONFIG "/gsm.config"
 
-#define SOFT_AP_WIFI_SSID "AC-DETECTOR-00"
+#define SOFT_AP_WIFI_SSID "DETECTOR_SETUP"
 #define SOFT_AP_WIFI_PASSWORD "12345678"
 
 #define NOTIFICATION_DATA "/notification.data"

@@ -9,18 +9,10 @@
 #define BUTTON_PIN 5
 #define GSM_RESET_PIN 13
 
-// #define DUMP_AT_COMMANDS
-// #define TINY_GSM_DEBUG Serial
 #define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
 
-#ifdef DUMP_AT_COMMANDS
-#include <StreamDebugger.h>
-StreamDebugger debugger(Serial2, Serial);
-TinyGsm modem(debugger);
-#else
 TinyGsm modem(Serial2);
-#endif
 TinyGsmClient client(modem);
 
 #define AC_PIN 34
@@ -57,7 +49,7 @@ String gsmNumber;
 AsyncWebServer server(HTTP_SERVER_PORT);
 
 /**
- * This magic function gets formatted time and date from GSM module
+ * This function gets formatted time and date from GSM module
  * @returns current time/date string HH:mm dd/MM/YYYY
  */
 String getTimeString()
@@ -79,7 +71,7 @@ String getTimeString()
 }
 
 /**
- * This hacky function gets SIM number and sets it to local variable
+ * This function gets SIM number and sets it to local variable
  * TONS of side effect coding
  * but it works
  */
@@ -122,7 +114,7 @@ void setup()
 
   /**
    * This PIN can't be LOW
-   * Othewise GSM will not start
+   * Otherwise GSM will not start
    */
   digitalWrite(GSM_RESET_PIN, HIGH);
 
@@ -153,6 +145,7 @@ void setup()
   }
 
   loadDefaultWiFiconfig(AP_SSID, AP_PASSWORD);
+  Serial.printf("%s:%d - AP SSID %s, AP PASSWORD %s\n", __FILE__, __LINE__, AP_SSID, AP_PASSWORD);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
 
   server.on("/api/setup-completed", HTTP_GET, [](AsyncWebServerRequest *request) {

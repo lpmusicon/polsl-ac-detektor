@@ -10,7 +10,7 @@ import { SetupWifiComponent } from './setup-wifi/setup-wifi.component';
 import { SetupMqttComponent } from './setup-mqtt/setup-mqtt.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { SignalStatusComponent } from './signal-status/signal-status.component';
-// import { fakeBackendProvider } from './fakeBackendProvider';
+import { fakeBackendProvider } from './fakeBackendProvider';
 import { HttpClientModule } from '@angular/common/http';
 import { InputWrapperComponent } from './input-wrapper/input-wrapper.component';
 import { InputStylerDirective } from './input-styler.directive';
@@ -41,7 +41,7 @@ import { SetupFinishedComponent } from './setup-finished/setup-finished.componen
     HttpClientModule
   ],
   providers: [
-    
+    fakeBackendProvider
   ],
   bootstrap: [AppComponent]
 })

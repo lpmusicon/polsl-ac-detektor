@@ -19,7 +19,6 @@ uint8_t isConfigured()
         result += 4;
     }
 
-    /* ALE WEŹ TO POPRAW ZANIM TO ODDASZ PLS */
     if (result == 6)
     {
         result = 1;
@@ -28,6 +27,9 @@ uint8_t isConfigured()
     return result;
 }
 
+/**
+ * Zapisuje SSID i Hasło do pliku
+ */
 bool saveWiFiconfig(const char *const SSID, const char *const PASSWORD)
 {
     File config = SPIFFS.open(WIFI_CONFIG, "w");
@@ -89,6 +91,9 @@ void deleteWiFiconfig()
     SPIFFS.remove(WIFI_CONFIG);
 }
 
+/**
+ * Zapisuje konfigurację GSM do pliku
+ */
 bool saveGSMconfig(const char *const NAME, const char *const NUMBER)
 {
     File config = SPIFFS.open(GSM_CONFIG, "w");
@@ -111,6 +116,9 @@ bool saveGSMconfig(const char *const NAME, const char *const NUMBER)
     return true;
 }
 
+/**
+ * Odczytuje z pamięci konfigurację GSM
+ */
 bool loadGSMconfig(char *NAME, char *NUMBER)
 {
     if (!SPIFFS.exists(GSM_CONFIG))
@@ -139,6 +147,9 @@ void deleteGSMconfig()
     SPIFFS.remove(GSM_CONFIG);
 }
 
+/**
+ * Zwraca ilość zdarzeń
+ */
 int notificationLength()
 {
     int counter = 0;
@@ -152,6 +163,9 @@ int notificationLength()
     return counter;
 }
 
+/**
+ * Zapisuje zdarzenie do pamięci
+ */
 bool writeNotification(NOTIFICATION_TYPE type, String date)
 {
     File file = SPIFFS.open(NOTIFICATION_DATA, "a");
