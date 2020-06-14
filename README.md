@@ -1,4 +1,4 @@
-# Work In Progress
+# Zakończono faze związaną z SMIW
 
 ## Projekt SMIW 2020
 ### Detektor AC
