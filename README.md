@@ -18,7 +18,7 @@
 * Kondensatory do zabezpieczenia napiecia zasilania przy module SIM800L
 
 #### Schemat podłączeniowy
-TODO
+Widoczny w raporcie
 
 #### Schemat PCB
-TODO
+Widoczny w raporcie
