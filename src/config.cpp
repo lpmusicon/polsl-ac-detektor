@@ -1,10 +1,14 @@
 #include "config.h"
 
 /*
+ * Wymagania sieci WiFi
  * Długość SSID: max 32 znaki! minimum 1
- * Password: 63 znaki dla WPA2 <3, minimum 8
+ * Password: WPA2 max 63 znaki, minimum 8 lub 0
 */
 
+/**
+ * Zwraca czy urzadzenie jest skonfigurowane
+ */
 uint8_t isConfigured()
 {
     uint8_t result = 0;
@@ -51,6 +55,9 @@ bool saveWiFiconfig(const char *const SSID, const char *const PASSWORD)
     return true;
 }
 
+/**
+ * Odczytuje SSID i hasło z pliku do zmiennych
+ */
 bool loadWiFiconfig(char *SSID, char *PASSWORD)
 {
     if (!SPIFFS.exists(WIFI_CONFIG))
@@ -80,12 +87,18 @@ bool loadWiFiconfig(char *SSID, char *PASSWORD)
     return true;
 }
 
+/**
+ * Kopiuje domyslne zmienne do SSID i HASLA
+ */
 void loadDefaultWiFiconfig(char *SSID, char *PASSWORD)
 {
     strcpy(SSID, SOFT_AP_WIFI_SSID);
     strcpy(PASSWORD, SOFT_AP_WIFI_PASSWORD);
 }
 
+/**
+ * Usuwa konfiguracje WiFi
+ */
 void deleteWiFiconfig()
 {
     SPIFFS.remove(WIFI_CONFIG);
@@ -142,6 +155,9 @@ bool loadGSMconfig(char *NAME, char *NUMBER)
     return true;
 }
 
+/**
+ * Usuwa config GSM
+ */
 void deleteGSMconfig()
 {
     SPIFFS.remove(GSM_CONFIG);
@@ -180,6 +196,10 @@ bool writeNotification(NOTIFICATION_TYPE type, String date)
     return true;
 }
 
+
+/**
+ * Usuwa wszystkie zdarzenia
+ */
 void deleteNotifications()
 {
     SPIFFS.remove(NOTIFICATION_DATA);

@@ -148,10 +148,11 @@ void setup()
   Serial.printf("%s:%d - AP SSID %s, AP PASSWORD %s\n", __FILE__, __LINE__, AP_SSID, AP_PASSWORD);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
 
+  /**
+   * Ogólnie to najchętniej bym te metody przeniósł do innego pliku i tam to wykonywał.
+   * Tutaj znajdują się wszystkie endpointy wymagane do działania aplikacji
+   */
   server.on("/api/setup-completed", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // STRING BAD
-    // CHAR* GOOD
-
     String response = "{ \"status\": \"";
     response += isConfigured();
     response += "\" }";
@@ -159,6 +160,10 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * [UNUSED] Ta funkcja nie jest obecnie wykorzystywana
+   * Skanuje dostępne sieci WiFi
+   */
   server.on("/api/wifi-scan", HTTP_GET, [](AsyncWebServerRequest *request) {
     int scanResult = WiFi.scanComplete();
     if (scanResult == WIFI_SCAN_NOT_TRIGGERED)
@@ -178,11 +183,19 @@ void setup()
     }
   });
 
+  /**
+   * [UNUSED]
+   * Usuwa obecnie zapisany stan zapisanych sieci
+   */ 
   server.on("/api/wifi-rescan", HTTP_GET, [](AsyncWebServerRequest *request) {
     WiFi.scanDelete();
     request->send(200, "application/json", "{\"status\": \"OK\"}");
   });
 
+  /**
+   * [UNUSED]
+   * Zwraca listę sieci WiFi
+   */
   server.on("/api/wifi-networks", HTTP_GET, [](AsyncWebServerRequest *request) {
     int scanResult = WiFi.scanComplete();
     if (scanResult >= 0)
@@ -223,6 +236,10 @@ void setup()
     }
   });
 
+  /**
+   * Zwraca status modułu WiFi
+   * Zgodny z enum ESP32 WiFi Status
+   */
   server.on("/api/wifi-status", HTTP_GET, [](AsyncWebServerRequest *request) {
     uint8_t wifiStatus = WiFi.status();
     char *response = new char[18];
@@ -231,6 +248,9 @@ void setup()
     delete[] response;
   });
 
+  /**
+   * Zwraca obecnie podłączone SSID
+   */
   server.on("/api/wifi-current", HTTP_GET, [](AsyncWebServerRequest *request) {
     String response = "{\"ssid\":\"";
     response += WiFi.SSID();
@@ -238,26 +258,9 @@ void setup()
     request->send(200, "application/json", response);
   });
 
-  server.on("/api/notification", HTTP_GET, [](AsyncWebServerRequest *request) {
-    File f = SPIFFS.open(NOTIFICATION_DATA, "r");
-    String response = "{\"entries\":[";
-
-    while (f.available())
-    {
-      int type = f.readStringUntil(',').toInt();
-      String date = f.readStringUntil('\n');
-      Notification n(type, date);
-      response += n.toJSON();
-      if (f.available())
-      {
-        response += ",";
-      }
-    }
-
-    response += "]}";
-    request->send(200, "application/json", response);
-  });
-
+  /**
+   * Łączy do danego STA podanego w formularzu
+   */
   server.on("/api/wifi-connect", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (WiFi.isConnected())
       WiFi.disconnect();
@@ -289,11 +292,17 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * Rozłącza sieć WiFi
+   */
   server.on("/api/wifi-disconnect", HTTP_DELETE, [](AsyncWebServerRequest *request) {
     WiFi.disconnect();
     request->send(200, "application/json", "{ \"status\": \"ok\" }");
   });
 
+  /**
+   * Zwraca MAC modułu WiFi
+   */
   server.on("/api/wifi-mac", HTTP_GET, [](AsyncWebServerRequest *request) {
     String response = "{ \"mac\": \"";
     response += WiFi.macAddress();
@@ -302,6 +311,9 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * Zwraca stan baterii w mV
+   */
   server.on("/api/battery-status", HTTP_GET, [](AsyncWebServerRequest *request) {
     String response = "{ \"status\": \"";
     response += batteryVoltage;
@@ -309,6 +321,9 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * Zwraca stan zasilania AC
+   */
   server.on("/api/ac-status", HTTP_GET, [](AsyncWebServerRequest *request) {
     String response = "{ \"status\": \"";
     response += acOn;
@@ -316,6 +331,9 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * Zapisuje SSID/Hasło WiFi w pamięci Flash modułu
+   */
   server.on("/api/wifi-save", HTTP_POST, [](AsyncWebServerRequest *request) {
     String ssid, password;
 
@@ -337,6 +355,9 @@ void setup()
     request->send(200, "application/json", "{ \"status\": \"OK\" }");
   });
 
+  /**
+   * Zapisuje kontakt GSM w pamięci Flash
+   */
   server.on("/api/gsm-contact", HTTP_POST, [](AsyncWebServerRequest *request) {
     String name, number;
 
@@ -359,6 +380,9 @@ void setup()
     request->send(200, "application/json", "{ \"status\": \"ok\" }");
   });
 
+  /**
+   * Zwraca nazwę, nr telefonu zapisany w module
+   */
   server.on("/api/gsm-contact", HTTP_GET, [](AsyncWebServerRequest *request) {
     char name[64];
     memset(name, 0, 64);
@@ -393,10 +417,39 @@ void setup()
     request->send(200, "application/json", response);
   });
 
+  /**
+   * Zwraca listę powiadomień z modułu
+   */
+  server.on("/api/notification", HTTP_GET, [](AsyncWebServerRequest *request) {
+    File f = SPIFFS.open(NOTIFICATION_DATA, "r");
+    String response = "{\"entries\":[";
+
+    while (f.available())
+    {
+      int type = f.readStringUntil(',').toInt();
+      String date = f.readStringUntil('\n');
+      Notification n(type, date);
+      response += n.toJSON();
+      if (f.available())
+      {
+        response += ",";
+      }
+    }
+
+    response += "]}";
+    request->send(200, "application/json", response);
+  });
+
+  /**
+   * Zwraca frontEnd - czyt. aplikację
+   */
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(SPIFFS, "/index.html");
   });
 
+  /**
+   * Powinno naprawiać problemy z CORS na niektórych konfiguracjach
+   */
   server.on("/api/*", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "OK");
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -405,11 +458,12 @@ void setup()
     request->send(response);
   });
 
+  /**
+   * Pozwala na serwowanie potrzebnych assetów przygotowanych w pamięci urządzenia
+   */
   server.serveStatic("/", SPIFFS, "/");
 
-  uint32_t rate = 115200;
-
-  Serial2.begin(rate, SERIAL_8N1);
+  Serial2.begin(SERIAL_BAUD, SERIAL_8N1);
   modem.sendAT("+IPR=115200");
 
   if (!modem.restart())

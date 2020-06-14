@@ -1,10 +1,16 @@
 #include <FS.h>
 #include <SPIFFS.h>
 
+/**
+ * Nazwy plikow konfiguracyjnych
+ */
 #define WIFI_CONFIG "/wifi.config"
 #define MQTT_CONFIG "/mqtt.config"
 #define GSM_CONFIG "/gsm.config"
 
+/**
+ * Domyslna sieci WiFi softAP
+ */
 #define SOFT_AP_WIFI_SSID "DETECTOR_SETUP"
 #define SOFT_AP_WIFI_PASSWORD "12345678"
 

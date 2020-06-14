@@ -11,6 +11,9 @@ class Notification
             this->date = date;
         }
 
+        /**
+         * Zwraca reprezentacje w JSON String
+         */
         String toJSON() {
             String json = "{\"type\":\"";
             json += type;
