@@ -1,3 +1,4 @@
+#pragma once
 #include <FS.h>
 #include <SPIFFS.h>
 
@@ -22,19 +23,20 @@
 #define WIFI_SCAN_NOT_TRIGGERED -2
 #define WIFI_SCAN_NOT_FINISHED -1
 
-enum class NOTIFICATION_TYPE {
+enum class NOTIFICATION_TYPE
+{
     POWER_LOSS,
     POWER_CONNECT,
     LOW_BATTERY
 };
 
 uint8_t isConfigured();
-bool saveWiFiconfig(const char * const SSID, const char * const PASSWORD);
-bool loadWiFiconfig(char * SSID, char * PASSWORD);
-void loadDefaultWiFiconfig(char * SSID, char * PASSWORD);
+bool saveWiFiconfig(const char *const SSID, const char *const PASSWORD);
+bool loadWiFiconfig(char *SSID, char *PASSWORD);
+void loadDefaultWiFiconfig(char *SSID, char *PASSWORD);
 void deleteWiFiconfig();
-bool saveGSMconfig(const char * const NAME, const char * const NUMBER);
-bool loadGSMconfig(char * NAME, char * NUMBER);
+bool saveGSMconfig(const char *const NAME, const char *const NUMBER);
+bool loadGSMconfig(char *NAME, char *NUMBER);
 void deleteGSMconfig();
 bool writeNotification(NOTIFICATION_TYPE type, String date);
 void deleteNotifications();
