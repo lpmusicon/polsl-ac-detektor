@@ -6,6 +6,10 @@
  * Password: WPA2 max 63 znaki, minimum 8 lub 0
 */
 
+#define CONFIGURED_WIFI 1
+#define CONFIGURED_MQTT 2
+#define CONFIGURED_GSM 4
+
 /**
  * Zwraca czy urzadzenie jest skonfigurowane
  */
@@ -15,17 +19,17 @@ uint8_t isConfigured()
 
     if (SPIFFS.exists(WIFI_CONFIG))
     {
-        result += 2;
+        result |= CONFIGURED_WIFI;
+    }
+
+    if (SPIFFS.exists(MQTT_CONFIG))
+    {
+        result |= CONFIGURED_MQTT;
     }
 
     if (SPIFFS.exists(GSM_CONFIG))
     {
-        result += 4;
-    }
-
-    if (result == 6)
-    {
-        result = 1;
+        result |= CONFIGURED_GSM;
     }
 
     return result;
@@ -195,7 +199,6 @@ bool writeNotification(NOTIFICATION_TYPE type, String date)
 
     return true;
 }
-
 
 /**
  * Usuwa wszystkie zdarzenia

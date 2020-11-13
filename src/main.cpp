@@ -5,22 +5,91 @@
 
 #include "config.h"
 #include "notification.h"
-#include "httpserver.h"
+#include "http/http.h"
 
 #define BUTTON_PIN 5
 #define GSM_RESET_PIN 13
 
 #define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
+#include <PubSubClient.h>
 
 TinyGsm modem(Serial2);
 TinyGsmClient client(modem);
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
 
 #define AC_PIN 34
 #define BATTERY_PIN 32
 #define SERIAL_BAUD 115200
 #define HTTP_SERVER_PORT 80
 #define MAX_MAPPED_VOLTAGE 5050
+
+#define MQTT_CLIENT_ID "DETECTOR_000"
+
+void callback(char *topic, byte *payload, unsigned int length)
+{ //callback includes topic and payload ( from which (topic) the payload is comming)
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+  }
+  if ((char)payload[0] == 'O' && (char)payload[1] == 'N') //on
+  {
+    Serial.println("on");
+    mqttClient.publish("outTopic", "LED turned ON");
+  }
+  else if ((char)payload[0] == 'O' && (char)payload[1] == 'F' && (char)payload[2] == 'F') //off
+  {
+    Serial.println(" off");
+    mqttClient.publish("outTopic", "LED turned OFF");
+  }
+  Serial.println();
+}
+
+void reconnect()
+{
+  while (!mqttClient.connected())
+  {
+    Serial.println("Attempting MQTT connection...");
+    if (mqttClient.connect(MQTT_CLIENT_ID))
+    {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      mqttClient.publish("outTopic", "Nodemcu connected to MQTT");
+      // ... and resubscribe
+      mqttClient.subscribe("inTopic");
+    }
+    else
+    {
+      Serial.print("failed, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+void mqttConnect()
+{
+  mqttClient.connect(MQTT_CLIENT_ID); // ESP will connect to mqtt broker with clientID
+  {
+    Serial.println("connected to MQTT");
+    // Once connected, publish an announcement...
+
+    // ... and resubscribe
+    mqttClient.subscribe("inTopic"); //topic=Demo
+    mqttClient.publish("outTopic", "connected to MQTT");
+
+    if (!mqttClient.connected())
+    {
+      reconnect();
+    }
+  }
+}
 
 /**
  * Infrastructure SSID
@@ -146,14 +215,47 @@ void setup()
   }
   Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem restarted");
 
-  if (!modem.waitForNetwork(300000L))
-  {
-    Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't connect modem");
-  }
-  Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem connected to network");
-  Serial.printf("%s:%d - Current Time: %s\n", __FILE__, __LINE__, getTimeString().c_str());
+  // if (!modem.waitForNetwork(300000L))
+  // {
+  //   Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't connect modem");
+  // }
+  // Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem connected to network");
+  // Serial.printf("%s:%d - Current Time: %s\n", __FILE__, __LINE__, getTimeString().c_str());
 
-  getSIMNumber();
+  // getSIMNumber();
+
+  configureEntriesEndpoints(server);
+  configureMqttEndpoints(server);
+  configureSetupEndpoints(server);
+  configureWifiEndpoints(server);
+
+  /**
+   * Zwraca frontEnd - czyt. aplikację
+   */
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/index.html");
+  });
+
+  /**
+   * Powinno naprawiać problemy z CORS na niektórych konfiguracjach
+   */
+  server.on("/api/*", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "OK");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Expose-Headers", "*");
+    response->addHeader("Access-Control-Allow-Credentials", "true");
+    request->send(response);
+  });
+
+  /**
+   * Pozwala na serwowanie potrzebnych assetów przygotowanych w pamięci urządzenia
+   */
+  server.serveStatic("/", SPIFFS, "/");
+
+  server.begin();
+
+  mqttClient.setServer("192.168.4.2", 1883);
+  mqttClient.setCallback(callback);
 }
 
 /**
@@ -210,28 +312,8 @@ void loop()
     /**
      * Detekcja jest możliwa tylko gdy urządzenie jest ustawione
      */
-    if (isConfigured() == 1)
+    if (1)
     {
-      char name[64], number[18];
-      memset(name, 0, 64);
-      memset(number, 0, 18);
-
-      /**
-       * GSM config is crucial to proper device functioning
-       * if it is not present delete config
-       * start over
-       */
-      if (!loadGSMconfig(name, number))
-      {
-        Serial.printf("%s:%d - GSM Config %s\n", __FILE__, __LINE__, "");
-        deleteWiFiconfig();
-        deleteGSMconfig();
-        deleteNotifications();
-        WiFi.disconnect();
-        WiFi.softAPdisconnect();
-        ESP.restart();
-      }
-
       /**
        * State detection change
        * two power states are recognized
@@ -241,10 +323,12 @@ void loop()
 
       if (justConnected)
       {
+        Serial.printf("%s:%d - Write power loss\n", __FILE__, __LINE__);
         writeNotification(NOTIFICATION_TYPE::POWER_LOSS, getTimeString());
       }
       else if (justDisconnected)
       {
+        Serial.printf("%s:%d - Write power on\n", __FILE__, __LINE__);
         writeNotification(NOTIFICATION_TYPE::POWER_CONNECT, getTimeString());
       }
 
@@ -278,4 +362,6 @@ void loop()
     Serial.printf("%s:%d - BATTERY PIN mV %d\n", __FILE__, __LINE__, batteryVoltage);
     Serial.printf("%s:%d - AC PIN %s\n", __FILE__, __LINE__, acOn ? "ON" : "OFF");
   }
+
+  mqttClient.loop();
 }
