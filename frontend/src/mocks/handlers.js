@@ -74,17 +74,6 @@ const ENTRIES = [
 ];
 
 export const handlers = [
-  rest.get("/api/setup/config", (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        ssid: "NETWORK SSID",
-        port: 3306,
-        server: "mqtt.example.com",
-        user: "sip.user.mqtt",
-      })
-    );
-  }),
   rest.post("/api/entries/clear", (req, res, ctx) => {
     sessionStorage.setItem("entries", 0);
     return res(ctx.status(201));
@@ -99,6 +88,17 @@ export const handlers = [
       ctx.status(200),
       ctx.json({
         entries,
+      })
+    );
+  }),
+  rest.get("/api/setup/config", (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json({
+        ssid: "NETWORK SSID",
+        port: 3306,
+        server: "mqtt.example.com",
+        user: "sip.user.mqtt",
       })
     );
   }),
