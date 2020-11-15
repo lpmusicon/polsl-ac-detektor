@@ -1,13 +1,13 @@
 #pragma once
 #include <ESPAsyncWebServer.h>
-#include "entries.h"
+#include "events.h"
 #include "mqtt.h"
 #include "setup.h"
 #include "wifi.h"
 
 void configureHttpServer(AsyncWebServer &server)
 {
-    configureEntriesEndpoints(server);
+    configureEventEndpoints(server);
     configureMqttEndpoints(server);
     configureSetupEndpoints(server);
     configureWifiEndpoints(server);

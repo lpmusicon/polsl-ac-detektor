@@ -1,25 +1,37 @@
 #pragma once
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include "event/event-type.h"
 
 class Notification
 {
-    uint8_t type;
-    String date;
-    public:
-        Notification(uint8_t type, const String & date) {
-            this->type = type;
-            this->date = date;
-        }
+    EVENT_TYPE type;
+    std::string date;
 
-        /**
+public:
+    Notification(EVENT_TYPE type, const std::string &date)
+    {
+        this->type = type;
+        this->date = date;
+    }
+
+    Notification(int type, const std::string &date)
+    {
+        this->type = (EVENT_TYPE)type;
+        this->date = date;
+    }
+
+    /**
          * Zwraca reprezentacje w JSON String
          */
-        String toJSON() {
-            String json = "{\"type\":\"";
-            json += type;
-            json += "\",\"date\":\"";
-            json += date;
-            json += "\"}";
-            return json;
-        } ;
+    std::string toJSON()
+    {
+        const size_t size = JSON_OBJECT_SIZE(2);
+        DynamicJsonDocument json(size);
+        json["type"] = (int)type;
+        json["date"] = date;
+        String response;
+        serializeJson(json, response);
+        return response.c_str();
+    };
 };

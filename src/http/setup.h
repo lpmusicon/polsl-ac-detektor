@@ -5,14 +5,13 @@
 #include <ArduinoJson.h>
 
 #include "helpers.h"
-#include "../config.h"
+#include "battery/battery.h"
+#include "config.h"
+#include "gsm/gsm-manager.h"
 
 #define API_SETUP "/api/setup"
 #define API_SETUP_CONFIG "/api/setup/config"
 #define API_SETUP_BATTERY "/api/setup/battery"
-
-extern uint16_t batteryVoltage;
-extern String gsmNumber;
 
 void configureSetupEndpoints(AsyncWebServer &server)
 {
@@ -24,7 +23,7 @@ void configureSetupEndpoints(AsyncWebServer &server)
         json["port"] = 3306;
         json["server"] = "mqtt.example.com";
         json["user"] = "sip.user.mqtt";
-        json["phone"] = gsmNumber;
+        json["phone"] = GsmManager::GetInstance()->getSIMNumber();
         json["battery"] = 4020;
         json["ac"] = 0;
         json["mac"] = WiFi.macAddress();
@@ -36,7 +35,7 @@ void configureSetupEndpoints(AsyncWebServer &server)
         String response;
         const size_t size = JSON_OBJECT_SIZE(1);
         DynamicJsonDocument json(size);
-        json["status"] = batteryVoltage;
+        json["status"] = Battery::GetInstance()->getVoltage();
         serializeJson(json, response);
         request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
     });
