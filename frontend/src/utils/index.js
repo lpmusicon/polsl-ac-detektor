@@ -3,8 +3,9 @@ import { route } from "preact-router";
 
 const SETUP_STATUS = {
   NOT_COMPLETED: 0,
+  COMPLETED_MQTT: 2,
   WIFI_COMPLETED: 1,
-  COMPLETED: 2,
+  COMPLETED: 7,
 };
 
 export const WIFI_STATUS = {
@@ -19,12 +20,12 @@ export const WIFI_STATUS = {
 
 export const processRedirect = (status) => {
   console.log("Current status: ", status);
-  if (status === SETUP_STATUS.NOT_COMPLETED) {
+  if (status === SETUP_STATUS.COMPLETED) {
+    route(Routes.Dashboard.path, true);
+  } else if (status === SETUP_STATUS.NOT_COMPLETED) {
     route(Routes.SetupWifi.path, true);
   } else if (status === SETUP_STATUS.WIFI_COMPLETED) {
     route(Routes.SetupMQTT.path, true);
-  } else if (status === SETUP_STATUS.COMPLETED) {
-    route(Routes.Dashboard.path, true);
   }
 };
 

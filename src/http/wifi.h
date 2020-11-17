@@ -3,14 +3,21 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
-#include "helpers.h"
-#include "../config.h"
+#include "http/helpers.h"
+#include "config/config-manager.h"
+#include "wifi/wifi-manager.h"
 
 #define API_WIFI_SCAN "/api/wifi/scan"
 #define API_WIFI_RESCAN "/api/wifi/rescan"
 #define API_WIFI_CONNECT "/api/wifi/connect"
 #define API_WIFI_STATUS "/api/wifi/status"
 #define API_WIFI_NETWORKS "/api/wifi/networks"
+
+#define MINIMUM_WIFI_NETWORK_RESPONSE_SIZE 30
+#define MAXIMUM_WIFI_NETWORK_OBJECT_SIZE 72
+
+#define WIFI_SCAN_NOT_TRIGGERED -2
+#define WIFI_SCAN_NOT_FINISHED -1
 
 volatile int8_t networks = 0;
 
@@ -21,23 +28,37 @@ void configureWifiEndpoints(AsyncWebServer &server)
         switch (scanResult)
         {
         case WIFI_SCAN_NOT_TRIGGERED:
+        {
             WiFi.scanDelete();
             networks = WiFi.scanNetworks(true);
-            request->send(HTTP_OK);
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_OK);
+            addCORS(web);
+            request->send(web);
             break;
+        }
         case WIFI_SCAN_NOT_FINISHED:
-            request->send(HTTP_ACCEPTED);
+        {
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_ACCEPTED);
+            addCORS(web);
+            request->send(web);
             break;
+        }
         default:
-            request->send(HTTP_NO_CONTENT);
+        {
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_NO_CONTENT);
+            addCORS(web);
+            request->send(web);
             break;
+        }
         }
     });
 
     server.on(API_WIFI_RESCAN, HTTP_POST, [](AsyncWebServerRequest *request) {
         WiFi.scanDelete();
         networks = WiFi.scanNetworks(true);
-        request->send(HTTP_OK);
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK);
+        addCORS(web);
+        request->send(web);
     });
 
     server.on(API_WIFI_CONNECT, HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -57,19 +78,23 @@ void configureWifiEndpoints(AsyncWebServer &server)
 
             Serial.printf("%s:%d - SSID: %s, PASSWORD: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
 
-            WiFi.persistent(false);
-            WiFi.begin(ssid.c_str(), password.c_str());
+            WifiManager::GetInstance()->tryConnect(ssid, password);
 
             String response;
             const size_t size = JSON_OBJECT_SIZE(1);
             DynamicJsonDocument json(size);
             json["status"] = WiFi.status();
             serializeJson(json, response);
-            request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response);
+            addCORS(web);
+            request->send(web);
         }
         else
         {
-            request->send(HTTP_BAD_REQUEST);
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_BAD_REQUEST);
+            addCORS(web);
+            request->send(web);
         }
     });
 
@@ -80,6 +105,9 @@ void configureWifiEndpoints(AsyncWebServer &server)
         json["status"] = WiFi.status();
         serializeJson(json, response);
         request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        addCORS(web);
+        request->send(web);
     });
 
     server.on(API_WIFI_NETWORKS, HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -88,9 +116,14 @@ void configureWifiEndpoints(AsyncWebServer &server)
         {
         case WIFI_SCAN_NOT_FINISHED:
         case WIFI_SCAN_NOT_TRIGGERED:
-            request->send(HTTP_NO_CONTENT);
+        {
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_NO_CONTENT);
+            addCORS(web);
+            request->send(web);
             break;
+        }
         default:
+        {
             uint16_t responseSize = MINIMUM_WIFI_NETWORK_RESPONSE_SIZE + (MAXIMUM_WIFI_NETWORK_OBJECT_SIZE + 1) * scanResult + 1;
             char *response = new char[responseSize];
             memset(response, 0, responseSize);
@@ -114,11 +147,16 @@ void configureWifiEndpoints(AsyncWebServer &server)
 
             strcat(response, "]}");
 
-            request->send(200, "application/json", response);
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response);
+            addCORS(web);
+            request->send(web);
             delete[] response;
             break;
         }
+        }
 
-        request->send(HTTP_OK, CONTENT_TYPE_JSON);
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_NO_CONTENT);
+        addCORS(web);
+        request->send(web);
     });
 }

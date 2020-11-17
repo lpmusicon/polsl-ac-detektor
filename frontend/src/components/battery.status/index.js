@@ -12,7 +12,7 @@ const BATTERY = {
 };
 
 export const BatteryStatus = () => {
-  const { fetch: getStatus } = useFetch("/api/battery");
+  const { fetch: getStatus } = useFetch("/api/setup/battery");
   const [iconSrc, setIconSrc] = useState(BATTERY.FULL);
 
   const round = (value) =>

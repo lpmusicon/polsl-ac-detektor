@@ -5,10 +5,10 @@
 #define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
 
+#include "config/config-manager.h"
+
 #define GSM_RESET_PIN 13
 #define SERIAL_BAUD 115200
-
-#define GSM_CONFIG "/gsm.config"
 
 class GsmManager
 {
@@ -17,6 +17,8 @@ protected:
     GsmManager()
     {
         pinMode(GSM_RESET_PIN, OUTPUT);
+        digitalWrite(GSM_RESET_PIN, LOW);
+        delay(2000);
         digitalWrite(GSM_RESET_PIN, HIGH);
 
         Serial2.begin(SERIAL_BAUD, SERIAL_8N1);
@@ -26,16 +28,22 @@ protected:
         {
             Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't restart modem");
         }
-        Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem restarted");
+        else
+        {
+            Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem restarted");
+        }
 
-        // if (!modem.waitForNetwork(300000L))
-        // {
-        //   Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't connect modem");
-        // }
-        // Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem connected to network");
-        // Serial.printf("%s:%d - Current Time: %s\n", __FILE__, __LINE__, getTimeString().c_str());
+        if (!modem.waitForNetwork(300000L))
+        {
+            Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "couldn't connect modem");
+        }
+        else
+        {
+            Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "modem connected to network");
+            Serial.printf("%s:%d - Current Time: %s\n", __FILE__, __LINE__, getTimeString().c_str());
 
-        // getSIMNumber();
+            getSIMNumber();
+        }
     }
     static GsmManager *_manager;
 
@@ -86,17 +94,12 @@ public:
         return data;
     }
 
-    void clear()
-    {
-        SPIFFS.remove(GSM_CONFIG);
-    }
-
     /**
  * Zapisuje konfigurację GSM do pliku
  */
     bool saveGSMconfig(const char *const NAME, const char *const NUMBER)
     {
-        File config = SPIFFS.open(GSM_CONFIG, "w");
+        File config = SPIFFS.open(ConfigManager::getGsmConfigPath().c_str(), "w");
 
         // Error inside SPIFFS
         if (!config)
@@ -110,7 +113,6 @@ public:
         config.print('\n');
         config.print(NUMBER);
         config.print('\n');
-
         config.close();
 
         return true;
@@ -121,12 +123,12 @@ public:
  */
     bool loadGSMconfig(char *NAME, char *NUMBER)
     {
-        if (!SPIFFS.exists(GSM_CONFIG))
+        if (!SPIFFS.exists(ConfigManager::getGsmConfigPath().c_str()))
         {
             return false;
         }
 
-        File config = SPIFFS.open(GSM_CONFIG, "r");
+        File config = SPIFFS.open(ConfigManager::getGsmConfigPath().c_str(), "r");
         if (!config)
         {
             return false;

@@ -4,36 +4,38 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
-#include "helpers.h"
-#include "../config.h"
+#include "http/helpers.h"
+#include "config/config-manager.h"
 #include "event/event-manager.h"
 
-#define API_EVENTS "/api/entries"
-#define API_EVENTS_CLEAR "/api/entries/clear"
+#define API_EVENTS "/api/events"
+#define API_EVENTS_CLEAR "/api/events/clear"
 
 void configureEventEndpoints(AsyncWebServer &server)
 {
     server.on(API_EVENTS, HTTP_GET, [](AsyncWebServerRequest *request) {
-        File f = SPIFFS.open(NOTIFICATION_DATA, "r");
-        std::string response = "{\"entries\":[";
+        std::string response = "{\"events\":[";
         EventManager::GetInstance()->forEach([&response](uint8_t type, std::string date, bool isLast) {
-            Notification n(type, date);
-            response += n.toJSON();
+            const size_t size = JSON_OBJECT_SIZE(2);
+            DynamicJsonDocument json(size);
+            json["type"] = type;
+            json["date"] = date;
+            serializeJson(json, response);
             if (!isLast)
             {
                 response += ",";
             }
         });
         response += "]}";
-
-        request->send(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        addCORS(web);
+        request->send(web);
     });
 
     server.on(API_EVENTS_CLEAR, HTTP_DELETE, [](AsyncWebServerRequest *request) {
-        if (!SPIFFS.remove(NOTIFICATION_DATA))
-        {
-            request->send(HTTP_SERVER_ERROR);
-        }
-        request->send(HTTP_NO_CONTENT);
+        EventManager::GetInstance()->clear();
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_NO_CONTENT);
+        addCORS(web);
+        request->send(web);
     });
 }

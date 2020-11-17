@@ -3,7 +3,8 @@ import styled from "styled-components";
 const WifiEntryContainer = styled.div`
   display: grid;
   grid-auto-flow: row;
-  grid-auto-rows: 100%;
+  height: 100%;
+  overflow: auto;
   gap: 12px;
 `;
 

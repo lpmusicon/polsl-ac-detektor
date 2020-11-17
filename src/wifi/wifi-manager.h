@@ -4,7 +4,11 @@
 #include <FS.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
-#include "config.h"
+
+#include "config/config-manager.h"
+
+#define SOFT_AP_WIFI_SSID "DETECTOR_SETUP"
+#define SOFT_AP_WIFI_PASSWORD "12345678"
 
 class WifiManager
 {
@@ -53,9 +57,27 @@ public:
     }
     void clear()
     {
-        SPIFFS.remove(WIFI_CONFIG);
         WiFi.disconnect();
         WiFi.softAPdisconnect();
+    }
+
+    void tryConnect(const String &ssid, const String &password)
+    {
+        WiFi.persistent(false);
+        WiFi.begin(ssid.c_str(), password.c_str());
+
+        auto onWiFiConnect = [ssid, password](WiFiEvent_t event, WiFiEventInfo_t info) {
+            Serial.printf("%s:%d - [WiFi] Event: %d\n", __FILE__, __LINE__, event);
+            Serial.printf("%s:%d - [WiFi] SSID: %s PASS: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
+            Serial.printf("%s:%d - [WiFi] IP: %s\n", __FILE__, __LINE__, WiFi.localIP().toString().c_str());
+            auto config = ConfigManager::GetInstance();
+            if (!config->saveSTA(ssid, password))
+            {
+                Serial.printf("%s:%d - [WiFi] Cannot save STA\n", __FILE__, __LINE__);
+            }
+        };
+
+        WiFi.onEvent(onWiFiConnect, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
     }
 
     /**
@@ -63,12 +85,12 @@ public:
  */
     bool loadWiFiconfig(char *SSID, char *PASSWORD)
     {
-        if (!SPIFFS.exists(WIFI_CONFIG))
+        if (!SPIFFS.exists(ConfigManager::getWifiConfigPath().c_str()))
         {
             return false;
         }
 
-        File config = SPIFFS.open(WIFI_CONFIG, "r");
+        File config = SPIFFS.open(ConfigManager::getWifiConfigPath().c_str(), "r");
         if (!config)
         {
             return false;
@@ -97,30 +119,6 @@ public:
     {
         strcpy(SSID, SOFT_AP_WIFI_SSID);
         strcpy(PASSWORD, SOFT_AP_WIFI_PASSWORD);
-    }
-
-    /**
- * Zapisuje SSID i Hasło do pliku
- */
-    bool saveWiFiconfig(const char *const SSID, const char *const PASSWORD)
-    {
-        File config = SPIFFS.open(WIFI_CONFIG, "w");
-
-        // Error inside SPIFFS
-        if (!config)
-        {
-            Serial.println("config.cpp, saveWiFi failed");
-            return false;
-        }
-
-        config.print(SSID);
-        config.print('\n');
-        config.print(PASSWORD);
-        config.print('\n');
-
-        config.close();
-
-        return true;
     }
 };
 

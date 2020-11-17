@@ -1,9 +1,10 @@
 #pragma once
+
 #include <Arduino.h>
-#include <stdint.h>
 
 #define BATTERY_PIN 32
 #define MAX_MAPPED_VOLTAGE 5050
+#define BATTERY_LOW_CHARGE_VOLTAGE 3500
 
 class Battery
 {
@@ -41,6 +42,11 @@ public:
         * Wartości są mapowane z 10 bitowego zakresu 3.3V do 5V (ze względu na dzielnik napięcia)
         */
         voltage = 0.4 * voltage + 0.6 * map(analogRead(BATTERY_PIN), 0, 4096, 0, MAX_MAPPED_VOLTAGE);
+    }
+
+    bool isLow()
+    {
+        return voltage < BATTERY_LOW_CHARGE_VOLTAGE;
     }
 };
 

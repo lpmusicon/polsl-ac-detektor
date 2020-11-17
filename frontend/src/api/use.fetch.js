@@ -1,4 +1,4 @@
-import axios from "axios";
+import { axios } from "./";
 import { useState } from "preact/hooks";
 
 export const useFetch = (url) => {

@@ -1,14 +1,14 @@
 import { axios } from "./";
 import { useState } from "preact/hooks";
 
-export const usePost = (url) => {
+export const useDelete = (url) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const post = async (data) => {
+  const del = async () => {
     setIsLoading(true);
     let response;
     try {
-      response = await axios.post(url, data);
+      response = await axios.delete(url);
     } catch (e) {
       throw e;
     } finally {
@@ -22,6 +22,6 @@ export const usePost = (url) => {
   };
   return {
     isLoading,
-    post,
+    delete: del,
   };
 };

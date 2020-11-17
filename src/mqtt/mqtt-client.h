@@ -2,7 +2,7 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <FS.h>
-#include "../config.h"
+#include "config/config-manager.h"
 #include "event/event-type.h"
 #include "mqtt/mqtt-request-type.h"
 
@@ -117,8 +117,13 @@ protected:
         if (eventMan->length() > 0)
         {
             eventMan->forEach([this](EVENT_TYPE type, std::string date, bool isLast) {
-                Notification n(type, date);
-                this->queue.emplace_back(MQTT_EVENT_RESPONSE_TOPIC, n.toJSON());
+                std::string response;
+                const size_t size = JSON_OBJECT_SIZE(2);
+                DynamicJsonDocument json(size);
+                json["type"] = (uint8_t)type;
+                json["date"] = date;
+                serializeJson(json, response);
+                this->queue.emplace_back(MQTT_EVENT_RESPONSE_TOPIC, response);
             });
         }
         else
@@ -231,12 +236,14 @@ public:
 
     void keepAlive()
     {
-        if (!mqtt.connected())
+        auto configManager = ConfigManager::GetInstance();
+
+        if (configManager->mqttEnabled() && !mqtt.connected())
         {
             reconnect();
         }
 
-        if (millis() - timeKeepAlive > KEEP_ALIVE_TIME_MS)
+        if (configManager->mqttEnabled() && (millis() - timeKeepAlive > KEEP_ALIVE_TIME_MS))
         {
             timeKeepAlive += KEEP_ALIVE_TIME_MS;
             mqtt.loop();

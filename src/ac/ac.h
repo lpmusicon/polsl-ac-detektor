@@ -1,5 +1,7 @@
 #pragma once
+
 #include <Arduino.h>
+
 #define AC_PIN 34
 
 class AC

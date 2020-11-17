@@ -8,6 +8,7 @@
 #include "config.h"
 #include "wifi/wifi-manager.h"
 #include "gsm/gsm-manager.h"
+#include "http/http.h"
 
 extern bool acOn;
 
@@ -23,7 +24,7 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
         uint8_t wifiStatus = WiFi.status();
         char *response = new char[18];
         sprintf(response, "{\"status\":%d}", wifiStatus);
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
         delete[] response;
     });
 
@@ -34,7 +35,7 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
         String response = "{\"ssid\":\"";
         response += WiFi.SSID();
         response += "\"}";
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
     });
 
     /**
@@ -58,7 +59,7 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
             }
         }
 
-        request->send(200, "application/json", "{ \"status\": \"OK\" }");
+        request->send(HTTP_OK, "application/json", "{ \"status\": \"OK\" }");
     });
 }
 
@@ -86,13 +87,13 @@ void configureEndpoints(AsyncWebServer &server)
             }
         }
 
-        request->send(200, "application/json", "{ \"status\": \"ok\" }");
+        request->send(HTTP_OK, "application/json", "{ \"status\": \"ok\" }");
     });
 
     server.on("/api/gsm/signal", HTTP_GET, [](AsyncWebServerRequest *request) {
         String response = "{ \"status\": \"";
         response += modem.getSignalQuality();
         response += "\" }";
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
     });
 }

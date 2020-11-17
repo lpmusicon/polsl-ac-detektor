@@ -13,7 +13,7 @@ import { useFetch } from "../../api";
 
 export const Settings = () => {
   const { fetch: getSettings } = useFetch("/api/setup/config");
-  const [initialValues, setInitialValues] = useState(initialValues);
+  const [initialValues, setInitialValues] = useState({});
   useEffect(() => {
     const setup = async () => {
       const values = await getSettings();
@@ -82,17 +82,32 @@ export const Settings = () => {
                 disabled
                 component={Input}
                 label="SSID"
-                name="server"
+                name="ssid"
                 type="text"
                 autocomplete="off"
                 placeholder="mqtt.example.com"
               />
             </FieldWrapper>
-            <Typography variant={Variant.h1} withMargin text="INNE" />
             <Typography variant={Variant.h2} text="MAC Urządzenia" />
-            <Typography variant={Variant.accent} text="AA:BB:CC:DD:EE:AA" />
+            <Typography
+              variant={Variant.accent}
+              text={initialValues?.mac || "---"}
+            />
             <Typography variant={Variant.h2} text="Numer karty SIM" />
-            <Typography variant={Variant.accent} text="0048696420420" />
+            <Typography
+              variant={Variant.accent}
+              text={initialValues?.phone || "---"}
+            />
+            <Typography variant={Variant.h2} text="Zasilanie" />
+            <Typography
+              variant={Variant.accent}
+              text={initialValues?.ac || false ? "Podłączone" : "Odłączone"}
+            />
+            <Typography variant={Variant.h2} text="Bateria" />
+            <Typography
+              variant={Variant.accent}
+              text={`Około ${initialValues?.battery || 3700}mV`}
+            />
           </FillContainer>
         </>
       )}

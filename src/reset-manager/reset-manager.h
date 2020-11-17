@@ -6,6 +6,7 @@
 #include "event/event-manager.h"
 #include "wifi/wifi-manager.h"
 #include "gsm/gsm-manager.h"
+#include "config/config-manager.h"
 
 #define BUTTON_PIN 5
 #define BUTTON_RESET_TIME_THRESHOLD 5000
@@ -33,11 +34,12 @@ public:
     }
     void check()
     {
-        if (!digitalRead(BUTTON_PIN))
+        bool clicked = !digitalRead(BUTTON_PIN);
+        if (clicked)
         {
             if (millis() - time > BUTTON_RESET_TIME_THRESHOLD)
             {
-                GsmManager::GetInstance()->clear();
+                ConfigManager::GetInstance()->clear();
                 WifiManager::GetInstance()->clear();
                 EventManager::GetInstance()->clear();
                 ESP.restart();

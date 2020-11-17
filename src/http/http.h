@@ -13,13 +13,6 @@ void configureHttpServer(AsyncWebServer &server)
     configureWifiEndpoints(server);
 
     /**
-   * Zwraca frontEnd - czyt. aplikację
-   */
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/index.html");
-    });
-
-    /**
    * Powinno naprawiać problemy z CORS na niektórych konfiguracjach
    */
     server.on("/api/*", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
@@ -27,7 +20,15 @@ void configureHttpServer(AsyncWebServer &server)
         response->addHeader("Access-Control-Allow-Origin", "*");
         response->addHeader("Access-Control-Expose-Headers", "*");
         response->addHeader("Access-Control-Allow-Credentials", "true");
+        response->addHeader("Access-Control-Allow-Methods", "POST,DELETE,GET,OPTIONS");
         request->send(response);
+    });
+
+    /**
+   * Zwraca frontEnd - czyt. aplikację
+   */
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html");
     });
 
     /**
