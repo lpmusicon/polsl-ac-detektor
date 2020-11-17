@@ -28,17 +28,17 @@ const WifiEntry = ({ network, setActive, selected }) => {
 
   const onClick = () => {
     setActive(network.id);
-    setFieldValue("ssid", network.ssid);
-    setFieldValue("type", network.type);
+    setFieldValue("ssid", network.SSID);
+    setFieldValue("type", network.encType);
   };
 
   return (
     <EntryWrapper>
       <SSID onClick={onClick} active={selected}>
-        <Typography variant={Variant.body2} text={network.ssid} />
-        <Typography variant={Variant.accent} text={network.rssi} />
+        <Typography variant={Variant.body2} text={network.SSID} />
+        <Typography variant={Variant.accent} text={network.dBm} />
       </SSID>
-      {network.type !== WIFI_TYPES.WIFI_AUTH_OPEN && selected && (
+      {network.encType !== WIFI_TYPES.WIFI_AUTH_OPEN && selected && (
         <Field
           name="password"
           type="password"

@@ -17,3 +17,11 @@ void networkToJSONObject(int id, char *string)
 {
     snprintf(string, 72, "{\"SSID\":\"%s\",\"dBm\":\"%d\",\"encType\":\"%d\"}", WiFi.SSID(id).c_str(), WiFi.RSSI(id), WiFi.encryptionType(id));
 }
+
+void addCORS(AsyncWebServerResponse *response)
+{
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Expose-Headers", "*");
+    response->addHeader("Access-Control-Allow-Methods", "POST,DELETE,GET,OPTIONS");
+    response->addHeader("Access-Control-Allow-Credentials", "true");
+}

@@ -5,7 +5,10 @@
 #include <TinyGsmClient.h>
 #include <ArduinoJson.h>
 
-#include "../config.h"
+#include "config.h"
+#include "wifi/wifi-manager.h"
+#include "gsm/gsm-manager.h"
+#include "http/http.h"
 
 extern bool acOn;
 
@@ -21,7 +24,7 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
         uint8_t wifiStatus = WiFi.status();
         char *response = new char[18];
         sprintf(response, "{\"status\":%d}", wifiStatus);
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
         delete[] response;
     });
 
@@ -32,7 +35,7 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
         String response = "{\"ssid\":\"";
         response += WiFi.SSID();
         response += "\"}";
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
     });
 
     /**
@@ -50,13 +53,13 @@ void configureWifkiiEndpoints(AsyncWebServer &server)
 
             Serial.printf("%s:%d - SSID: %s, PASSWORD: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
 
-            if (!saveWiFiconfig(ssid.c_str(), password.c_str()))
+            if (!WifiManager::GetInstance()->saveWiFiconfig(ssid.c_str(), password.c_str()))
             {
                 Serial.println("DID NOT SAVE WIFI CONFIG");
             }
         }
 
-        request->send(200, "application/json", "{ \"status\": \"OK\" }");
+        request->send(HTTP_OK, "application/json", "{ \"status\": \"OK\" }");
     });
 }
 
@@ -78,20 +81,19 @@ void configureEndpoints(AsyncWebServer &server)
             Serial.println(name);
             Serial.println(number);
 
-            if (!saveGSMconfig(name.c_str(), number.c_str()))
+            if (!GsmManager::GetInstance()->saveGSMconfig(name.c_str(), number.c_str()))
             {
                 Serial.printf("%s:%d - %s\n", __FILE__, __LINE__, "did not save gsm config");
             }
         }
 
-        request->send(200, "application/json", "{ \"status\": \"ok\" }");
+        request->send(HTTP_OK, "application/json", "{ \"status\": \"ok\" }");
     });
 
     server.on("/api/gsm/signal", HTTP_GET, [](AsyncWebServerRequest *request) {
         String response = "{ \"status\": \"";
         response += modem.getSignalQuality();
         response += "\" }";
-        request->send(200, "application/json", response);
+        request->send(HTTP_OK, "application/json", response);
     });
-
 }

@@ -7,6 +7,7 @@ const PasswordStyled = styled.div`
   padding: 12px;
   display: flex;
   align-items: center;
+  height: 60px;
 `;
 
 export const Password = ({ field, ...props }) => {

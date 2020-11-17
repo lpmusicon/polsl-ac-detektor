@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
-import { useFetch, usePost } from "../../api";
-
+import { useFetch, useDelete } from "../../api";
+import { processRedirect } from "./../../utils";
 import { BatteryStatus } from "./../../components/battery.status";
 import { Button } from "../../components/button";
 import { Card } from "../../components/card";
@@ -8,6 +8,7 @@ import { CardContainer } from "../../components/card.container";
 import { ENTRY_TYPE } from "./../../utils";
 import { IconLink } from "../../components/icon.link";
 import { Statusbar } from "../../components/statusbar";
+import { Typography, Variant } from "../../components/typography";
 
 const composeCard = (entry) => {
   switch (entry.type) {
@@ -35,15 +36,16 @@ const composeCard = (entry) => {
 };
 
 export const Dashboard = () => {
-  const [entries, setEntries] = useState([]);
-  const { fetch: fetchEntries, isLoading } = useFetch("/api/entries");
-  const { post: clearEntries } = usePost("/api/entries/clear");
+  const { fetch: setupState } = useFetch("/api/setup");
+  const [events, setEvents] = useState([]);
+  const { fetch: fetchEntries, isLoading } = useFetch("/api/events");
+  const { delete: clearEntries } = useDelete("/api/events/clear");
   const [entryInterval, setEntryInterval] = useState();
 
   const getEntries = async () => {
     try {
-      const { entries } = await fetchEntries();
-      setEntries(entries);
+      const { events } = await fetchEntries();
+      setEvents(events);
     } catch (e) {
       console.warn("Error: ", e);
       clearInterval(entryInterval);
@@ -51,6 +53,13 @@ export const Dashboard = () => {
   };
 
   useEffect(() => {
+    const setup = async () => {
+      const { status } = await setupState();
+      processRedirect(status);
+      await scanWifi();
+    };
+    setup();
+
     const interval = setInterval(async () => getEntries(), 5000);
     setEntryInterval(interval);
     getEntries();
@@ -70,7 +79,10 @@ export const Dashboard = () => {
         }
       />
       <CardContainer>
-        {entries.map((entry) => composeCard(entry))}
+        {events.length === 0 && (
+          <Typography variant={Variant.h1} text="Brak powiadomień" />
+        )}
+        {events.map((entry) => composeCard(entry))}
       </CardContainer>
       <Button
         disabled={isLoading}

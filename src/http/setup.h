@@ -4,49 +4,58 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
-#include "helpers.h"
-#include "../config.h"
+#include "http/helpers.h"
+#include "battery/battery.h"
+#include "ac/ac.h"
+#include "config/config-manager.h"
+#include "gsm/gsm-manager.h"
 
 #define API_SETUP "/api/setup"
 #define API_SETUP_CONFIG "/api/setup/config"
 #define API_SETUP_BATTERY "/api/setup/battery"
 
-extern uint16_t batteryVoltage;
-extern String gsmNumber;
-
 void configureSetupEndpoints(AsyncWebServer &server)
 {
     server.on(API_SETUP_CONFIG, HTTP_GET, [](AsyncWebServerRequest *request) {
         String response;
-        const size_t size = JSON_OBJECT_SIZE(8);
+        const size_t size = JSON_OBJECT_SIZE(12);
         DynamicJsonDocument json(size);
-        json["ssid"] = "network ssid";
-        json["port"] = 3306;
-        json["server"] = "mqtt.example.com";
-        json["user"] = "sip.user.mqtt";
-        json["phone"] = gsmNumber;
-        json["battery"] = 4020;
-        json["ac"] = 0;
-        json["mac"] = WiFi.macAddress();
+        json["ssid"] = ConfigManager::GetInstance()->getWifiSsid();
+        json["port"] = ConfigManager::GetInstance()->getMqttServerPort();
+        json["server"] = ConfigManager::GetInstance()->getMqttServerIP();
+        json["user"] = ConfigManager::GetInstance()->getMqttServerUser();
+        json["phone"] = GsmManager::GetInstance()->getSIMNumber();
+        json["battery"] = Battery::GetInstance()->getVoltage();
+        json["mac"] = ConfigManager::GetInstance()->getWifiMac();
+        json["ac"] = AC::GetInstance()->connected();
         serializeJson(json, response);
-        request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        addCORS(web);
+        request->send(web);
     });
 
     server.on(API_SETUP_BATTERY, HTTP_GET, [](AsyncWebServerRequest *request) {
         String response;
         const size_t size = JSON_OBJECT_SIZE(1);
         DynamicJsonDocument json(size);
-        json["status"] = batteryVoltage;
+        json["status"] = Battery::GetInstance()->getVoltage();
         serializeJson(json, response);
-        request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        addCORS(web);
+        request->send(web);
     });
 
     server.on(API_SETUP, HTTP_GET, [](AsyncWebServerRequest *request) {
         String response;
         const size_t size = JSON_OBJECT_SIZE(1);
         DynamicJsonDocument json(size);
-        json["status"] = isConfigured();
+        json["status"] = ConfigManager::GetInstance()->isConfigured();
         serializeJson(json, response);
-        request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+
+        AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
+        addCORS(web);
+        request->send(web);
     });
 }

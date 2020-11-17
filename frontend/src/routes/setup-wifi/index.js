@@ -14,7 +14,7 @@ import { route } from "preact-router";
 
 export const SetupWifi = () => {
   const { fetch: setupState } = useFetch("/api/setup");
-  const { fetch: scanWifi } = useFetch("/api/wifi/scan");
+  const { post: scanWifi } = usePost("/api/wifi/scan");
   const { fetch: fetchNetworks } = useFetch("/api/wifi/networks");
   const { post: connect } = usePost("/api/wifi/connect");
   const { fetch: statusWifi } = useFetch("/api/wifi/status");
@@ -23,6 +23,9 @@ export const SetupWifi = () => {
 
   const refreshNetworks = async () => {
     const { networks } = await fetchNetworks();
+    for (let i = 0; i < networks.length; i++) {
+      networks[i].id = i;
+    }
     setNetworks(networks);
   };
 
@@ -31,16 +34,16 @@ export const SetupWifi = () => {
       const { status } = await setupState();
       processRedirect(status);
       await scanWifi();
+
+      setTimeout(async () => {
+        try {
+          await refreshNetworks();
+        } catch (e) {
+          console.warn("Error: ", e);
+        }
+      }, 1000);
     };
     setup();
-
-    setTimeout(async () => {
-      try {
-        await refreshNetworks();
-      } catch (e) {
-        console.warn("Error: ", e);
-      }
-    }, 1000);
   }, []);
 
   const onSubmit = async (values) => {

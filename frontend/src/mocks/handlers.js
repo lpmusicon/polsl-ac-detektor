@@ -74,11 +74,11 @@ const ENTRIES = [
 ];
 
 export const handlers = [
-  rest.post("/api/entries/clear", (req, res, ctx) => {
+  rest.post("/api/events/clear", (req, res, ctx) => {
     sessionStorage.setItem("entries", 0);
     return res(ctx.status(201));
   }),
-  rest.get("/api/entries", (req, res, ctx) => {
+  rest.get("/api/events", (req, res, ctx) => {
     let items = sessionStorage.getItem("entries");
     if (items >= ENTRIES.length) items = ENTRIES.length;
     const entries = [...ENTRIES.slice(0, items)];
