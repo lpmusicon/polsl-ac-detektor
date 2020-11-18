@@ -62,21 +62,13 @@ void configureWifiEndpoints(AsyncWebServer &server)
     });
 
     server.on(API_WIFI_CONNECT, HTTP_POST, [](AsyncWebServerRequest *request) {
-        if (WiFi.isConnected())
-            WiFi.disconnect();
-
-        String ssid;
-        String password;
-
         if (request->hasParam("ssid", true) && request->hasParam("password", true))
         {
-            AsyncWebParameter *pssid = request->getParam("ssid", true);
-            AsyncWebParameter *ppassword = request->getParam("password", true);
+            AsyncWebParameter *paramSsid = request->getParam("ssid", true);
+            AsyncWebParameter *paramPassword = request->getParam("password", true);
 
-            ssid = pssid->value();
-            password = ppassword->value();
-
-            Serial.printf("%s:%d - SSID: %s, PASSWORD: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
+            String ssid = paramSsid->value();
+            String password = paramPassword->value();
 
             WifiManager::GetInstance()->tryConnect(ssid, password);
 
@@ -92,19 +84,19 @@ void configureWifiEndpoints(AsyncWebServer &server)
         }
         else
         {
-            AsyncWebServerResponse *web = request->beginResponse(HTTP_BAD_REQUEST);
+            AsyncWebServerResponse *web = request->beginResponse(HTTP_BAD_REQUEST, "text/plain", "");
             addCORS(web);
             request->send(web);
         }
     });
 
     server.on(API_WIFI_STATUS, HTTP_GET, [](AsyncWebServerRequest *request) {
-        String response;
+        std::string response;
         const size_t size = JSON_OBJECT_SIZE(1);
         DynamicJsonDocument json(size);
         json["status"] = WiFi.status();
         serializeJson(json, response);
-        request->send(HTTP_OK, CONTENT_TYPE_JSON, response);
+
         AsyncWebServerResponse *web = request->beginResponse(HTTP_OK, CONTENT_TYPE_JSON, response.c_str());
         addCORS(web);
         request->send(web);

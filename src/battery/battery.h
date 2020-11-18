@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 #define BATTERY_PIN 32
-#define MAX_MAPPED_VOLTAGE 5050
+#define MAX_MAPPED_VOLTAGE 7020
 #define BATTERY_LOW_CHARGE_VOLTAGE 3500
 
 class Battery

@@ -71,13 +71,13 @@ public:
                 mqttServer = f.readStringUntil('\n').c_str();
                 if (f.available())
                 {
-                    mqttUser = f.readStringUntil('\n').c_str();
+                    mqttPort = f.readStringUntil('\n').toInt();
                     if (f.available())
                     {
-                        mqttPassword = f.readStringUntil('\n').c_str();
+                        mqttUser = f.readStringUntil('\n').c_str();
                         if (f.available())
                         {
-                            mqttPort = f.readStringUntil('\n').toInt();
+                            mqttPassword = f.readStringUntil('\n').c_str();
                         }
                     }
                 }
@@ -194,6 +194,24 @@ public:
         config.print(ssid);
         config.print('\n');
         config.print(password);
+        config.print('\n');
+        config.close();
+        return true;
+    }
+
+    bool saveMQTT(std::string domain, uint16_t port, std::string user, std::string password)
+    {
+        File config = SPIFFS.open(MQTT_CONFIG, "w");
+        if (!config)
+            return false;
+
+        config.print(domain.c_str());
+        config.print('\n');
+        config.print(port);
+        config.print('\n');
+        config.print(user.c_str());
+        config.print('\n');
+        config.print(password.c_str());
         config.print('\n');
         config.close();
         return true;

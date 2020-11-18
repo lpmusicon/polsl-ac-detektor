@@ -20,6 +20,7 @@ void configureHttpServer(AsyncWebServer &server)
         response->addHeader("Access-Control-Allow-Origin", "*");
         response->addHeader("Access-Control-Expose-Headers", "*");
         response->addHeader("Access-Control-Allow-Credentials", "true");
+        response->addHeader("Access-Control-Allow-Headers", "content-type");
         response->addHeader("Access-Control-Allow-Methods", "POST,DELETE,GET,OPTIONS");
         request->send(response);
     });

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "preact/hooks";
+
 import { useFetch, useDelete } from "../../api";
-import { processRedirect } from "./../../utils";
+import { processRedirect, logError } from "./../../utils";
+import { ENTRY_TYPE } from "./../../utils";
 import { BatteryStatus } from "./../../components/battery.status";
 import { Button } from "../../components/button";
 import { Card } from "../../components/card";
 import { CardContainer } from "../../components/card.container";
-import { ENTRY_TYPE } from "./../../utils";
 import { IconLink } from "../../components/icon.link";
 import { Statusbar } from "../../components/statusbar";
 import { Typography, Variant } from "../../components/typography";
@@ -47,7 +48,7 @@ export const Dashboard = () => {
       const { events } = await fetchEntries();
       setEvents(events);
     } catch (e) {
-      console.warn("Error: ", e);
+      logError(e);
       clearInterval(entryInterval);
     }
   };
@@ -56,7 +57,6 @@ export const Dashboard = () => {
     const setup = async () => {
       const { status } = await setupState();
       processRedirect(status);
-      await scanWifi();
     };
     setup();
 

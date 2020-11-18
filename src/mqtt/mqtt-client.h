@@ -15,10 +15,17 @@ const std::string MQTT_EVENT_RESPONSE_TOPIC = MQTT_CLIENT_ID + std::string("/EVE
 class MqttClient
 {
 protected:
+    static MqttClient *_client;
     PubSubClient mqtt;
     std::vector<std::pair<std::string, std::string>> queue;
     const int KEEP_ALIVE_TIME_MS = 500;
     unsigned long timeKeepAlive = 0;
+
+    bool tryNewConnection = false;
+    std::string domain = "";
+    uint16_t port = 1883;
+    std::string user = "";
+    std::string password = "";
 
     void subscribeTopics()
     {
@@ -187,7 +194,8 @@ protected:
     void reconnect()
     {
         Serial.println("Attempting MQTT connection...");
-        if (mqtt.connect(MQTT_CLIENT_ID))
+
+        if (mqtt.connect(MQTT_CLIENT_ID, user.c_str(), password.c_str()))
         {
             Serial.println("connected");
             subscribeTopics();
@@ -225,13 +233,29 @@ protected:
         }
     }
 
-public:
-    MqttClient(Client &client)
+    MqttClient()
     {
-        mqtt.setClient(client);
         mqtt.setCallback([this](char *topic, byte *payload, unsigned int length) {
             this->callback(topic, payload, length);
         });
+    }
+
+public:
+    MqttClient(MqttClient &o) = delete;
+    MqttClient operator=(const MqttClient &) = delete;
+
+    static MqttClient *GetInstance()
+    {
+        if (_client == nullptr)
+        {
+            _client = new MqttClient();
+        }
+        return _client;
+    }
+
+    void setClient(Client &client)
+    {
+        mqtt.setClient(client);
     }
 
     void keepAlive()
@@ -251,19 +275,60 @@ public:
         }
     }
 
-    void connect(const char *domain, uint16_t port)
+    void connect()
     {
-        mqtt.setServer(domain, port);
-        mqtt.connect(MQTT_CLIENT_ID);
+        auto configManager = ConfigManager::GetInstance();
+        if (configManager->mqttEnabled())
+        {
+            domain = configManager->getMqttServerIP();
+            port = configManager->getMqttServerPort();
+            user = configManager->getMqttServerUser();
+            password = configManager->getMqttServerPassword();
 
-        if (mqtt.connected())
-        {
-            Serial.println("connected to MQTT");
-            subscribeTopics();
-        }
-        else
-        {
-            Serial.printf("%s:%d - Cannot connect MQTT, state %d\n", __FILE__, __LINE__, mqtt.state());
+            mqtt.setServer(domain.c_str(), port);
+            mqtt.connect(MQTT_CLIENT_ID, user.c_str(), password.c_str());
+
+            if (mqtt.connected())
+            {
+                Serial.println("connected to MQTT");
+                subscribeTopics();
+            }
+            else
+            {
+                Serial.printf("%s:%d - Cannot connect MQTT, state %d\n", __FILE__, __LINE__, mqtt.state());
+            }
         }
     }
+
+    void checkNewConnection()
+    {
+        if (tryNewConnection)
+        {
+            mqtt.setServer(domain.c_str(), port);
+            mqtt.connect(MQTT_CLIENT_ID, user.c_str(), password.c_str());
+            if (mqtt.connected())
+            {
+                Serial.println("connected to MQTT");
+                ConfigManager::GetInstance()->saveMQTT(domain, port, user, password);
+                ConfigManager::GetInstance()->refresh();
+            }
+            tryNewConnection = false;
+        }
+    }
+
+    void tryConnect(std::string domain, uint16_t port, std::string user, std::string password)
+    {
+        tryNewConnection = true;
+        this->domain = domain;
+        this->port = port;
+        this->user = user;
+        this->password = password;
+    }
+
+    bool connected()
+    {
+        return mqtt.connected();
+    }
 };
+
+MqttClient *MqttClient::_client = nullptr;

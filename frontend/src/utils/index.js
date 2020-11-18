@@ -1,5 +1,6 @@
-import { Routes } from "../components/app.routes";
 import { route } from "preact-router";
+
+import { Routes } from "../components/app.routes";
 
 const SETUP_STATUS = {
   NOT_COMPLETED: 0,
@@ -36,7 +37,17 @@ export const ENTRY_TYPE = {
 };
 
 export const MQTT_STATUS = {
-  DISCONNECTED: 0,
-  CONNECTED: 1,
-  CONNECTING: 2,
+  DISCONNECTED: false,
+  CONNECTED: true,
 };
+
+export const transformRequest = (values) => {
+  const fd = new FormData();
+  for (const key of Object.keys(values)) {
+    fd.append(key, values[key]);
+  }
+  return fd;
+};
+
+export const logError = (e) =>
+  console.warn(`${e.config.baseURL}${e.config.url} : ${e.message}`);

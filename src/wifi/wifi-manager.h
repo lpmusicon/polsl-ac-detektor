@@ -18,11 +18,13 @@ protected:
     char AP_SSID[33];
     char AP_PASSWORD[64];
 
+    wifi_event_id_t eventId;
+
     WifiManager()
     {
         WiFi.persistent(false);
         WiFi.setAutoReconnect(false);
-        WiFi.mode(WIFI_AP_STA);
+        WiFi.mode(WIFI_MODE_APSTA);
         WiFi.softAPdisconnect();
         WiFi.disconnect();
 
@@ -30,10 +32,15 @@ protected:
         {
             WiFi.begin(SSID, PASSWORD);
             Serial.printf("%s:%d - SSID %s, PASSWORD %s\n", __FILE__, __LINE__, SSID, PASSWORD);
+            int retries = 0;
             while (WiFi.status() != WL_CONNECTED)
             {
                 Serial.println("Connecting");
                 delay(500);
+                if (retries++ > 10)
+                {
+                    break;
+                }
             }
             Serial.printf("%s:%d - Connected WiFi IP: %s\n", __FILE__, __LINE__, WiFi.localIP().toString().c_str());
         }
@@ -61,13 +68,20 @@ public:
         WiFi.softAPdisconnect();
     }
 
-    void tryConnect(const String &ssid, const String &password)
+    void tryConnect(String ssid, String password)
     {
+        WiFi.removeEvent(eventId);
+
         WiFi.persistent(false);
+
+        if (WiFi.isConnected())
+        {
+            WiFi.disconnect();
+        }
+
         WiFi.begin(ssid.c_str(), password.c_str());
 
         auto onWiFiConnect = [ssid, password](WiFiEvent_t event, WiFiEventInfo_t info) {
-            Serial.printf("%s:%d - [WiFi] Event: %d\n", __FILE__, __LINE__, event);
             Serial.printf("%s:%d - [WiFi] SSID: %s PASS: %s\n", __FILE__, __LINE__, ssid.c_str(), password.c_str());
             Serial.printf("%s:%d - [WiFi] IP: %s\n", __FILE__, __LINE__, WiFi.localIP().toString().c_str());
             auto config = ConfigManager::GetInstance();
@@ -75,9 +89,13 @@ public:
             {
                 Serial.printf("%s:%d - [WiFi] Cannot save STA\n", __FILE__, __LINE__);
             }
+            else
+            {
+                Serial.printf("%s:%d - [WiFi] Saved STA\n", __FILE__, __LINE__);
+            }
         };
 
-        WiFi.onEvent(onWiFiConnect, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
+        eventId = WiFi.onEvent(onWiFiConnect, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
     }
 
     /**

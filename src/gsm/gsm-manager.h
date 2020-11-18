@@ -18,7 +18,7 @@ protected:
     {
         pinMode(GSM_RESET_PIN, OUTPUT);
         digitalWrite(GSM_RESET_PIN, LOW);
-        delay(2000);
+        delay(1000);
         digitalWrite(GSM_RESET_PIN, HIGH);
 
         Serial2.begin(SERIAL_BAUD, SERIAL_8N1);

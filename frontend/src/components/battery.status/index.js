@@ -36,9 +36,13 @@ export const BatteryStatus = () => {
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      const { voltage } = await getStatus();
-      setIconSrc(selectIcon(round(voltage)));
-    }, 5000);
+      try {
+        const { voltage } = await getStatus();
+        setIconSrc(selectIcon(round(voltage)));
+      } catch (e) {
+        console.log("No Battery: ", e.message);
+      }
+    }, 30000);
 
     return () => {
       clearInterval(interval);

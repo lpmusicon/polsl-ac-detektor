@@ -24,4 +24,5 @@ void addCORS(AsyncWebServerResponse *response)
     response->addHeader("Access-Control-Expose-Headers", "*");
     response->addHeader("Access-Control-Allow-Methods", "POST,DELETE,GET,OPTIONS");
     response->addHeader("Access-Control-Allow-Credentials", "true");
+    response->addHeader("Access-Control-Allow-Headers", "Accept");
 }

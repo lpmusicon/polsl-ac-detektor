@@ -15,31 +15,26 @@
 #define HTTP_SERVER_PORT 80
 
 WiFiClient wifiClient;
-MqttClient mqttClient = MqttClient(wifiClient);
 AsyncWebServer server(HTTP_SERVER_PORT);
 
 void setup()
 {
   Serial.begin(SERIAL_BAUD);
-  auto configManager = ConfigManager::GetInstance();
+  ConfigManager::GetInstance()->refresh();
   AC::GetInstance();
   Battery::GetInstance();
   ResetManager::GetInstance();
   GsmManager::GetInstance();
   WifiManager::GetInstance();
-
+  MqttClient::GetInstance()->setClient(wifiClient);
+  MqttClient::GetInstance()->connect();
   configureHttpServer(server);
-
-  if (configManager->mqttEnabled())
-  {
-    Serial.printf("%s:%d - Connect MQTT\n", __FILE__, __LINE__);
-    mqttClient.connect(configManager->getMqttServerIP().c_str(), configManager->getMqttServerPort());
-  }
 }
 
 void loop()
 {
-  mqttClient.keepAlive();
+  MqttClient::GetInstance()->checkNewConnection();
+  MqttClient::GetInstance()->keepAlive();
   AC::GetInstance()->check();
   Battery::GetInstance()->measure();
   ResetManager::GetInstance()->check();

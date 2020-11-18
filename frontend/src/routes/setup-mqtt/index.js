@@ -1,58 +1,71 @@
 import { Field, Formik } from "formik";
-import { MQTT_STATUS, processRedirect } from "../../utils";
-import { Typography, Variant } from "../../components/typography";
-import { useFetch, usePost } from "../../api";
 
+import { route } from "preact-router";
+
+import { useEffect, useState } from "preact/hooks";
+
+import { useFetch, usePost } from "../../api";
+import {
+  MQTT_STATUS,
+  processRedirect,
+  transformRequest,
+  logError,
+} from "../../utils";
+import { Routes } from "../../components/app.routes";
 import { BatteryStatus } from "./../../components/battery.status";
 import { Button } from "../../components/button";
 import { FieldWrapper } from "../../components/field.wrapper";
 import { FillContainer } from "../../components/fill.container";
 import { Input } from "../../components/input";
-import { Routes } from "../../components/app.routes";
 import { Statusbar } from "../../components/statusbar";
-import { route } from "preact-router";
-import { useEffect } from "preact/hooks";
+import { Typography, Variant } from "../../components/typography";
 
 const initialValues = {
   server: "",
   user: "",
   password: "",
-  port: "3306",
+  port: "1883",
 };
 
 export const SetupMQTT = () => {
   const { fetch: setupState } = useFetch("/api/setup");
   const { post: connectMQTT } = usePost("/api/mqtt/connect");
   const { fetch: statusMQTT } = useFetch("/api/mqtt/status");
+  const [error, setError] = useState();
 
   useEffect(() => {
     const setup = async () => {
-      const { status } = await setupState();
-      processRedirect(status);
+      try {
+        const { status } = await setupState();
+        processRedirect(status);
+      } catch (e) {
+        logError(e);
+      }
     };
     setup();
   }, []);
 
   const onSubmit = async (values) => {
     try {
-      await connectMQTT(values);
+      await connectMQTT(transformRequest(values));
       const interval = setInterval(async () => {
         const { status } = await statusMQTT();
+        clearInterval(interval);
         switch (status) {
           case MQTT_STATUS.DISCONNECTED:
-            clearInterval(interval);
+            setError(
+              "Nie udało się podłączyć do serwera MQTT. Spróbuj jeszcze raz"
+            );
             break;
           case MQTT_STATUS.CONNECTED:
-            clearInterval(interval);
             route(Routes.Dashboard.path, true);
             break;
-          case MQTT_STATUS.CONNECTING:
           default:
             break;
         }
       }, 1000);
     } catch (e) {
-      console.warn("Error: ", e);
+      logError(e);
     }
   };
 
@@ -112,6 +125,9 @@ export const SetupMQTT = () => {
                 placeholder="3306"
               />
             </FieldWrapper>
+            {error && (
+              <Typography variant={Variant.accent} withMargin text={error} />
+            )}
           </FillContainer>
           <Button type="submit" onClick={() => props.handleSubmit()}>
             Sprawdź ustawienia
