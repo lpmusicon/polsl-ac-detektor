@@ -4,11 +4,11 @@
 #include <FS.h>
 #include "config/config-manager.h"
 #include "event/event-type.h"
+#include "event/event-manager.h"
 #include "mqtt/mqtt-request-type.h"
 
 #define MQTT_CLIENT_ID "DETECTOR_000"
 
-const std::string MQTT_EVENT_TOPIC = MQTT_CLIENT_ID + std::string("/EVENT");
 const std::string MQTT_EVENT_REQUEST_TOPIC = MQTT_CLIENT_ID + std::string("/EVENT/REQUEST");
 const std::string MQTT_EVENT_RESPONSE_TOPIC = MQTT_CLIENT_ID + std::string("/EVENT/RESPONSE");
 
@@ -328,6 +328,17 @@ public:
     bool connected()
     {
         return mqtt.connected();
+    }
+
+    void enqueue(std::pair<EVENT_TYPE, std::string> pair)
+    {
+        std::string response;
+        const size_t size = JSON_OBJECT_SIZE(2);
+        DynamicJsonDocument json(size);
+        json["type"] = (uint8_t)pair.first;
+        json["date"] = pair.second;
+        serializeJson(json, response);
+        queue.emplace_back(MQTT_EVENT_RESPONSE_TOPIC, response);
     }
 };
 

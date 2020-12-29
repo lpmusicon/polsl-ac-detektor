@@ -18,8 +18,9 @@ protected:
     EventManager() {}
     static EventManager *_manager;
     unsigned long time = 0;
-    const unsigned int INTERVAL = 1000;
+    const unsigned int INTERVAL = 100;
     bool lowBatteryEventSent = false;
+    std::vector<std::pair<EVENT_TYPE, std::string>> pendingQueue;
 
 public:
     EventManager(EventManager &o) = delete;
@@ -36,8 +37,9 @@ public:
     {
         return SPIFFS.exists(EVENT_DATA) && SPIFFS.remove(EVENT_DATA);
     }
-    bool add(EVENT_TYPE type, String date)
+    bool add(EVENT_TYPE type, std::string date)
     {
+        pendingQueue.emplace_back(type, date);
         File file = SPIFFS.open(EVENT_DATA, "a");
         if (!file)
         {
@@ -85,19 +87,19 @@ public:
 
     void loop()
     {
-        if ((millis() - time > INTERVAL) && ConfigManager::GetInstance()->isConfigured() == (CONFIGURED_MQTT | CONFIGURED_WIFI | CONFIGURED_GSM))
+        if ((millis() - time > INTERVAL) && ConfigManager::GetInstance()->isConfigured() == (CONFIGURED_MQTT | CONFIGURED_WIFI))
         {
             time += INTERVAL;
             auto ac = AC::GetInstance();
             auto gsm = GsmManager::GetInstance();
             if (ac->justConnected())
             {
-                Serial.printf("%s:%d - Power loss\n", __FILE__, __LINE__);
+                Serial.printf("%s:%d - [Event] Power loss, %s\n", __FILE__, __LINE__, gsm->getTimeString().c_str());
                 add(EVENT_TYPE::POWER_LOSS, gsm->getTimeString());
             }
             else if (ac->justDisconnected())
             {
-                Serial.printf("%s:%d - Power on\n", __FILE__, __LINE__);
+                Serial.printf("%s:%d - [Event] Power on, %s\n", __FILE__, __LINE__, gsm->getTimeString().c_str());
                 add(EVENT_TYPE::POWER_CONNECT, gsm->getTimeString());
             }
 
@@ -107,6 +109,13 @@ public:
                 add(EVENT_TYPE::LOW_BATTERY, gsm->getTimeString());
             }
         }
+    }
+
+    std::pair<EVENT_TYPE, std::string> pendingEvent()
+    {
+        auto el = pendingQueue.back();
+        pendingQueue.pop_back();
+        return el;
     }
 };
 

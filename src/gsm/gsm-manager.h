@@ -21,7 +21,7 @@ protected:
         delay(1000);
         digitalWrite(GSM_RESET_PIN, HIGH);
 
-        Serial2.begin(SERIAL_BAUD, SERIAL_8N1);
+        Serial2.begin(SERIAL_BAUD, SERIAL_8N1, 17, 16);
         modem.sendAT("+IPR=115200");
 
         if (!modem.restart())
@@ -63,7 +63,7 @@ public:
  * This function gets formatted time and date from GSM module
  * @returns current time/date string HH:mm dd/MM/YYYY
  */
-    String getTimeString()
+    std::string getTimeString()
     {
         /**
    * Have to get every part of time/date string
@@ -78,7 +78,7 @@ public:
         char buf[20];
         sprintf(buf, "%02d:%02d %02d/%02d/%d", hour, min, day, month, year);
 
-        return String(buf);
+        return std::string(buf);
     }
 
     String getSIMNumber()
